@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Playfair Display", Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-cream text-ink antialiased;
+}
+
+/* Utility component classes */
+@layer components {
+  .container-app {
+    @apply mx-auto w-full max-w-7xl px-5 sm:px-8;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-ink text-cream hover:bg-ink-soft shadow-card;
+  }
+
+  .btn-gold {
+    @apply btn bg-gold text-ink hover:bg-gold-dark;
+  }
+
+  .btn-outline {
+    @apply btn border border-ink/15 bg-white/70 text-ink hover:border-ink/40;
+  }
+
+  .card {
+    @apply rounded-2xl border border-black/5 bg-white shadow-card;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+}
+
+/* Hide scrollbar for horizontal scrollers */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
