@@ -1,12 +1,20 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Shop } from "@/lib/types";
-import { priceLevelLabel } from "@/lib/utils";
+import { priceLevelLabel, formatDistance } from "@/lib/utils";
 import { Stars } from "./Stars";
 import { QueueBadge } from "./QueueBadge";
 import { MapPin, Navigation } from "lucide-react";
 
-export function ShopCard({ shop }: { shop: Shop }) {
+export function ShopCard({
+  shop,
+  distanceKm,
+}: {
+  shop: Shop;
+  /** Live distance from the user's device; falls back to the shop's static value. */
+  distanceKm?: number;
+}) {
+  const dist = distanceKm ?? shop.distanceKm;
   return (
     <Link
       href={`/shop/${shop.slug}`}
@@ -33,7 +41,7 @@ export function ShopCard({ shop }: { shop: Shop }) {
         </span>
         <div className="absolute bottom-3 left-3 flex items-center gap-1 text-xs font-medium text-cream">
           <Navigation size={12} className="text-gold" />
-          {shop.distanceKm} km away
+          {formatDistance(dist)} away
         </div>
       </div>
 
