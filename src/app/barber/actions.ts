@@ -4,65 +4,31 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-export type AuthState = { error: string | null };
-
-/** Barber sign up (email + password), then mark profile role = 'barber'. */
-export async function signUpBarber(
-  _prev: AuthState,
-  formData: FormData
-): Promise<AuthState> {
-  const fullName = String(formData.get("fullName") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-
-  if (!fullName || !email || password.length < 6) {
-    return { error: "Please fill all fields (password min 6 characters)." };
-  }
-
+/**
+ * Called right after a barber logs in via OTP. Marks their profile role as
+ * 'barber' (idempotent), then sends them to onboarding or the dashboard
+ * depending on whether they already have a shop.
+ */
+export async function completeBarberLogin() {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/barber/login");
 
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: fullName } },
-  });
+  // Mark as barber (safe to run every login).
+  await supabase.from("profiles").update({ role: "barber" }).eq("id", user.id);
 
-  if (error) return { error: error.message };
-
-  // Mark this profile as a barber (trigger already created the row).
-  if (data.user) {
-    await supabase
-      .from("profiles")
-      .update({ role: "barber", full_name: fullName })
-      .eq("id", data.user.id);
-  }
-
-  // If email confirmation is OFF, a session exists → go to dashboard.
-  // If it's ON, there is no session yet → tell the user to check email.
-  if (data.session) {
-    revalidatePath("/barber", "layout");
-    redirect("/barber/onboarding");
-  }
-
-  redirect("/barber/login?checkEmail=1");
-}
-
-/** Barber login (email + password). */
-export async function loginBarber(
-  _prev: AuthState,
-  formData: FormData
-): Promise<AuthState> {
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "/barber");
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) return { error: error.message };
+  // Do they already own a shop?
+  const { data: shop } = await supabase
+    .from("shops")
+    .select("id")
+    .eq("owner_id", user.id)
+    .limit(1)
+    .maybeSingle();
 
   revalidatePath("/barber", "layout");
-  redirect(next || "/barber");
+  redirect(shop ? "/barber/dashboard" : "/barber/onboarding");
 }
 
 /** Log out and return to the barber login page. */
