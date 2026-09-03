@@ -66,6 +66,16 @@ export async function sendOtp(
   const e164 = toE164(phone);
   if (e164.length !== 13) return { ok: false, error: "Invalid phone number." };
 
+  // The service-role key is required to store/verify OTPs. Fail cleanly with a
+  // helpful message instead of throwing if it's not configured yet.
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return {
+      ok: false,
+      error:
+        "OTP backend not fully configured (missing SUPABASE_SERVICE_ROLE_KEY).",
+    };
+  }
+
   // Test-account bypass: skip delivery entirely.
   if (otpConfig.testPhone && e164 === toE164(otpConfig.testPhone)) {
     return { ok: true, channel: "test" };
