@@ -133,7 +133,7 @@ export async function sendOtp(
     channel = "dev";
   }
 
-  await supabase.from("otp_verifications").upsert({
+  const { error: storeErr } = await supabase.from("otp_verifications").upsert({
     phone: e164,
     code_hash: hashCode(code, e164),
     expires_at_ms: expiresAtMs,
@@ -144,6 +144,18 @@ export async function sendOtp(
     verified: false,
     verified_at_ms: null,
   });
+
+  // If we can't persist the code, verification will always fail with
+  // "no code found". Surface this immediately instead of silently succeeding.
+  if (storeErr) {
+    return {
+      ok: false,
+      error:
+        process.env.NODE_ENV !== "production"
+          ? `Could not save the code: ${storeErr.message}`
+          : "Could not process the verification code. Please try again.",
+    };
+  }
 
   return {
     ok: true,
