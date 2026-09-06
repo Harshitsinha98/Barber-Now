@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getShopBySlug } from "@/lib/data";
-import { formatINR, summarize } from "@/lib/utils";
+import { getBookingDetail } from "@/lib/shops";
+import { formatINR } from "@/lib/utils";
 import { QueueTracker } from "@/components/QueueTracker";
 import {
   CheckCircle2,
@@ -16,29 +16,15 @@ import {
 export default async function ConfirmPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    shop?: string;
-    services?: string;
-    barber?: string;
-    mode?: string;
-    slot?: string;
-  }>;
+  searchParams: Promise<{ id?: string }>;
 }) {
-  const sp = await searchParams;
-  const shop = sp.shop ? getShopBySlug(sp.shop) : undefined;
-  if (!shop) notFound();
+  const { id } = await searchParams;
+  const booking = id ? await getBookingDetail(id) : null;
+  if (!booking) notFound();
 
-  const serviceIds = (sp.services ?? "").split(",").filter(Boolean);
-  const chosen = shop.services.filter((s) => serviceIds.includes(s.id));
-  const barber =
-    sp.barber && sp.barber !== "any"
-      ? shop.barbers.find((b) => b.id === sp.barber)
-      : null;
-  const mode = sp.mode === "slot" ? "slot" : "queue";
-  const { total, duration } = summarize(chosen);
-
-  // Simple readable booking id
-  const bookingId = "BN" + (shop.id + Date.now().toString().slice(-5));
+  const { shop, mode, slotTime, serviceNames, totalDuration, totalAmount, barberName } =
+    booking;
+  const shortId = "BN" + booking.id.slice(0, 6).toUpperCase();
 
   return (
     <div className="container-app max-w-3xl py-10">
@@ -52,8 +38,8 @@ export default async function ConfirmPage({
         </h1>
         <p className="mt-1 text-ink/60">
           {mode === "queue"
-            ? "Relax at home — we'll ping you when it's almost your turn."
-            : `See you at your slot. Booking ID ${bookingId}`}
+            ? "Relax — we'll ping you when it's almost your turn."
+            : `See you at your slot. Booking ID ${shortId}`}
         </p>
       </div>
 
@@ -63,7 +49,7 @@ export default async function ConfirmPage({
           <h2 className="font-display text-lg font-bold text-ink">
             Booking details
           </h2>
-          <p className="mt-1 text-xs text-ink/40">ID: {bookingId}</p>
+          <p className="mt-1 text-xs text-ink/40">ID: {shortId}</p>
 
           <div className="mt-4 space-y-3 text-sm">
             <Row icon={<Scissors size={15} />} label="Shop" value={shop.name} />
@@ -75,30 +61,29 @@ export default async function ConfirmPage({
             <Row
               icon={<User size={15} />}
               label="Barber"
-              value={barber ? barber.name : "Any available"}
+              value={barberName || "Any available"}
             />
             <Row
               icon={<CalendarClock size={15} />}
               label={mode === "slot" ? "Slot" : "Type"}
-              value={mode === "slot" ? (sp.slot ?? "—") : "Virtual queue (walk-in)"}
+              value={mode === "slot" ? (slotTime ?? "—") : "Virtual queue (walk-in)"}
             />
           </div>
 
           <div className="mt-4 border-t border-black/10 pt-4">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink/40">
-              Services · {duration} min
+              Services · {totalDuration} min
             </p>
             <ul className="space-y-1 text-sm">
-              {chosen.map((s) => (
-                <li key={s.id} className="flex justify-between text-ink/70">
-                  <span>{s.name}</span>
-                  <span>{formatINR(s.price)}</span>
+              {serviceNames.map((n, i) => (
+                <li key={i} className="text-ink/70">
+                  {n}
                 </li>
               ))}
             </ul>
             <div className="mt-3 flex justify-between border-t border-black/10 pt-3 font-bold text-ink">
               <span>Total (pay at shop)</span>
-              <span>{formatINR(total)}</span>
+              <span>{formatINR(totalAmount)}</span>
             </div>
           </div>
         </div>
@@ -113,9 +98,11 @@ export default async function ConfirmPage({
                 <CalendarClock size={16} /> Your appointment
               </div>
               <p className="mt-3 font-display text-4xl font-bold text-ink">
-                {sp.slot}
+                {slotTime}
               </p>
-              <p className="text-ink/60">Today · {shop.openHours.split("–")[0].trim()} onwards</p>
+              <p className="text-ink/60">
+                Today{shop.openHours ? ` · ${shop.openHours.split("–")[0].trim()} onwards` : ""}
+              </p>
               <p className="mt-4 rounded-lg bg-black/5 p-3 text-xs text-ink/50">
                 Please arrive 5 minutes early. We&apos;ll send a reminder on
                 WhatsApp &amp; SMS.

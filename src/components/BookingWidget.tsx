@@ -10,6 +10,7 @@ import {
   generateSlots,
   summarize,
 } from "@/lib/utils";
+import { createBooking } from "@/app/(customer)/booking/actions";
 import { QueueBadge } from "./QueueBadge";
 import {
   Check,
@@ -18,6 +19,7 @@ import {
   CalendarClock,
   Users,
   ChevronRight,
+  LoaderCircle,
 } from "lucide-react";
 
 type Mode = "queue" | "slot";
@@ -28,6 +30,8 @@ export function BookingWidget({ shop }: { shop: Shop }) {
   const [barberId, setBarberId] = useState<string>("any");
   const [mode, setMode] = useState<Mode>("queue");
   const [slot, setSlot] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const slots = useMemo(() => generateSlots(shop.id.length), [shop.id]);
 
@@ -35,21 +39,35 @@ export function BookingWidget({ shop }: { shop: Shop }) {
   const { total, originalTotal, duration } = summarize(chosen);
   const savings = originalTotal - total;
 
-  const canBook = chosen.length > 0 && (mode === "queue" || slot);
+  const canBook = chosen.length > 0 && (mode === "queue" || slot) && !submitting;
 
   function toggle(id: string) {
     setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
-  function handleBook() {
-    const params = new URLSearchParams({
-      shop: shop.slug,
-      services: chosen.map((s) => s.id).join(","),
-      barber: barberId,
+  async function handleBook() {
+    setSubmitting(true);
+    setError(null);
+    const result = await createBooking({
+      shopId: shop.id,
+      serviceIds: chosen.map((s) => s.id),
+      barberId: barberId === "any" ? null : barberId,
       mode,
-      ...(slot ? { slot } : {}),
+      slotTime: slot,
     });
-    router.push(`/booking/confirm?${params.toString()}`);
+
+    if (!result.ok) {
+      if (result.needsAuth) {
+        // Send them to sign in, then back to this shop.
+        router.push(`/login?next=/shop/${shop.slug}`);
+        return;
+      }
+      setError(result.error);
+      setSubmitting(false);
+      return;
+    }
+
+    router.push(`/booking/confirm?id=${result.bookingId}`);
   }
 
   return (
@@ -214,9 +232,18 @@ export function BookingWidget({ shop }: { shop: Shop }) {
           onClick={handleBook}
           className="btn-gold w-full"
         >
-          {mode === "queue" ? "Join virtual queue" : "Confirm slot"}
-          <ChevronRight size={18} />
+          {submitting ? (
+            <LoaderCircle size={18} className="animate-spin" />
+          ) : (
+            <>
+              {mode === "queue" ? "Join virtual queue" : "Confirm slot"}
+              <ChevronRight size={18} />
+            </>
+          )}
         </button>
+        {error && (
+          <p className="mt-2 text-center text-xs text-rose-600">{error}</p>
+        )}
         <p className="mt-2 text-center text-xs text-ink/40">
           No advance payment · Pay at shop
         </p>

@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getShopBySlug, shops } from "@/lib/data";
+import { getShopBySlug } from "@/lib/shops";
 import { priceLevelLabel } from "@/lib/utils";
 import { Stars } from "@/components/Stars";
 import { Gallery } from "@/components/Gallery";
@@ -14,17 +14,13 @@ import {
   Scissors,
 } from "lucide-react";
 
-export function generateStaticParams() {
-  return shops.map((s) => ({ slug: s.slug }));
-}
-
 export default async function ShopPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const shop = getShopBySlug(slug);
+  const shop = await getShopBySlug(slug);
   if (!shop) notFound();
 
   return (

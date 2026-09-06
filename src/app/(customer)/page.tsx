@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { shops } from "@/lib/data";
+import { getPublishedShops } from "@/lib/shops";
 import { DiscoverSection } from "@/components/DiscoverSection";
 import {
   Search,
@@ -12,7 +12,9 @@ import {
   Smartphone,
 } from "lucide-react";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const shops = await getPublishedShops();
+
   return (
     <>
       {/* HERO */}
