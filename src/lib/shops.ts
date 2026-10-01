@@ -1,13 +1,24 @@
+import "server-only";
 import { createClient } from "./supabase/server";
 import type {
   ShopRow,
   ServiceRow,
   BarberRow,
   ReviewRow,
+  BookingRow,
+  BookingStatus,
 } from "./supabase/database.types";
 import type { Shop, Service, Barber, Review } from "./types";
 
-/** Map a DB service row to the app Service type. */
+const FALLBACK_COVER =
+  "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1200&q=80";
+
+export function avatarFor(name: string): string {
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    name
+  )}&background=1a1d24&color=c9a24b&size=128&bold=true`;
+}
+
 function mapService(r: ServiceRow): Service {
   return {
     id: r.id,
@@ -20,55 +31,39 @@ function mapService(r: ServiceRow): Service {
   };
 }
 
-/** Map a DB barber row to the app Barber type. */
 function mapBarber(r: BarberRow): Barber {
   return {
     id: r.id,
     name: r.name,
-    avatarUrl:
-      r.avatar_url ||
-      `https://ui-avatars.com/api/?name=${encodeURIComponent(
-        r.name
-      )}&background=1a1d24&color=c9a24b&size=128&bold=true`,
+    avatarUrl: r.avatar_url || avatarFor(r.name),
     specialities: r.specialities ?? [],
     rating: Number(r.rating) || 5,
     experienceYears: r.experience_years,
   };
 }
 
-const FALLBACK_COVER =
-  "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1200&q=80";
-
-interface ReviewWithProfile extends ReviewRow {
-  profiles?: { full_name: string | null } | null;
-}
-
-/**
- * Combine a shop row + its children into the app `Shop` shape (camelCase).
- * rating / reviewCount are aggregated from the review rows.
- */
-function mapShop(
+/** Shop row + children → the camelCase `Shop` the UI uses. */
+export function mapShop(
   row: ShopRow,
   services: ServiceRow[],
   barbers: BarberRow[],
-  reviews: ReviewWithProfile[]
+  reviews: ReviewRow[]
 ): Shop {
-  const activeServices = services.filter((s) => s.is_active).map(mapService);
   const reviewCount = reviews.length;
   const rating =
     reviewCount > 0
-      ? Math.round(
-          (reviews.reduce((a, r) => a + r.rating, 0) / reviewCount) * 10
-        ) / 10
+      ? Math.round((reviews.reduce((a, r) => a + r.rating, 0) / reviewCount) * 10) / 10
       : 0;
 
-  const mappedReviews: Review[] = reviews.map((r) => ({
-    id: r.id,
-    userName: r.profiles?.full_name || "Customer",
-    rating: r.rating,
-    comment: r.comment ?? "",
-    date: r.created_at,
-  }));
+  const mappedReviews: Review[] = [...reviews]
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .map((r) => ({
+      id: r.id,
+      userName: r.reviewer_name || "Customer",
+      rating: r.rating,
+      comment: r.comment ?? "",
+      date: r.created_at,
+    }));
 
   return {
     id: row.id,
@@ -83,13 +78,14 @@ function mapShop(
     lng: row.lng ?? 0,
     rating,
     reviewCount,
+    isVerified: Boolean(row.is_verified),
     priceLevel: (Number(row.price_level) || 2) as 1 | 2 | 3,
     coverImage: row.cover_image || FALLBACK_COVER,
     gallery: row.gallery ?? [],
     openNow: row.open_now,
     openHours: row.open_hours ?? "",
     amenities: row.amenities ?? [],
-    services: activeServices,
+    services: services.filter((s) => s.is_active).map(mapService),
     barbers: barbers.filter((b) => b.is_active).map(mapBarber),
     reviews: mappedReviews,
     queue: {
@@ -100,38 +96,20 @@ function mapShop(
   };
 }
 
-/**
- * All published shops for the customer discovery page, each hydrated with its
- * services, barbers and review aggregates.
- */
-export async function getPublishedShops(): Promise<Shop[]> {
-  const supabase = await createClient();
+type Db = Awaited<ReturnType<typeof createClient>>;
 
-  const { data: shopRows } = await supabase
-    .from("shops")
-    .select("*")
-    .eq("is_published", true)
-    .order("created_at", { ascending: false });
-
-  const rows = (shopRows as ShopRow[]) ?? [];
+/** Hydrate a list of shop rows with their services, barbers and reviews. */
+async function hydrate(supabase: Db, rows: ShopRow[]): Promise<Shop[]> {
   if (rows.length === 0) return [];
-
-  const shopIds = rows.map((r) => r.id);
-
-  const [{ data: services }, { data: barbers }, { data: reviews }] =
-    await Promise.all([
-      supabase.from("services").select("*").in("shop_id", shopIds),
-      supabase.from("barbers").select("*").in("shop_id", shopIds),
-      supabase
-        .from("reviews")
-        .select("*, profiles(full_name)")
-        .in("shop_id", shopIds),
-    ]);
-
+  const ids = rows.map((r) => r.id);
+  const [{ data: services }, { data: barbers }, { data: reviews }] = await Promise.all([
+    supabase.from("services").select("*").in("shop_id", ids),
+    supabase.from("barbers").select("*").in("shop_id", ids),
+    supabase.from("reviews").select("*").in("shop_id", ids),
+  ]);
   const svc = (services as ServiceRow[]) ?? [];
   const brb = (barbers as BarberRow[]) ?? [];
-  const rvw = (reviews as ReviewWithProfile[]) ?? [];
-
+  const rvw = (reviews as ReviewRow[]) ?? [];
   return rows.map((row) =>
     mapShop(
       row,
@@ -142,57 +120,93 @@ export async function getPublishedShops(): Promise<Shop[]> {
   );
 }
 
-/** A single published shop by slug (hydrated), or null. */
+/** Published (and not suspended) shops for the discovery page. */
+export async function getPublishedShops(): Promise<Shop[]> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("shops")
+      .select("*")
+      .eq("is_published", true)
+      .order("created_at", { ascending: false });
+    // Shops that never added a service can't be booked — hide them.
+    const shops = await hydrate(supabase, (data as ShopRow[]) ?? []);
+    return shops.filter((s) => s.services.length > 0);
+  } catch {
+    return [];
+  }
+}
+
 export async function getShopBySlug(slug: string): Promise<Shop | null> {
   const supabase = await createClient();
-
-  const { data: shopRow } = await supabase
+  const { data } = await supabase
     .from("shops")
     .select("*")
     .eq("slug", slug)
     .eq("is_published", true)
     .maybeSingle<ShopRow>();
-
-  if (!shopRow) return null;
-
-  const [{ data: services }, { data: barbers }, { data: reviews }] =
-    await Promise.all([
-      supabase.from("services").select("*").eq("shop_id", shopRow.id),
-      supabase.from("barbers").select("*").eq("shop_id", shopRow.id),
-      supabase
-        .from("reviews")
-        .select("*, profiles(full_name)")
-        .eq("shop_id", shopRow.id)
-        .order("created_at", { ascending: false }),
-    ]);
-
-  return mapShop(
-    shopRow,
-    (services as ServiceRow[]) ?? [],
-    (barbers as BarberRow[]) ?? [],
-    (reviews as ReviewWithProfile[]) ?? []
-  );
+  if (!data) return null;
+  const [shop] = await hydrate(supabase, [data]);
+  return shop ?? null;
 }
 
+async function getShopById(supabase: Db, id: string): Promise<Shop | null> {
+  const { data } = await supabase.from("shops").select("*").eq("id", id).maybeSingle<ShopRow>();
+  if (!data) return null;
+  const [shop] = await hydrate(supabase, [data]);
+  return shop ?? null;
+}
 
-import type { BookingRow } from "./supabase/database.types";
+/** Slot times already booked today at a shop. */
+export async function getTakenSlots(shopId: string): Promise<string[]> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.rpc("taken_slots", { p_shop: shopId });
+    return (data as string[] | null) ?? [];
+  } catch {
+    return [];
+  }
+}
 
-export interface BookingDetail {
+export const ACTIVE_STATUSES: BookingStatus[] = ["booked", "in_queue", "in_service"];
+
+export interface MyBooking {
   id: string;
+  status: BookingStatus;
   mode: "queue" | "slot";
   slotTime: string | null;
-  status: string;
+  bookingDate: string;
   totalAmount: number;
+  createdAt: string;
   serviceNames: string[];
   totalDuration: number;
   barberName: string | null;
+  reviewed: boolean;
   shop: Shop;
 }
 
-/** Load a single booking (owned by the current user) with its shop + services. */
-export async function getBookingDetail(
-  bookingId: string
-): Promise<BookingDetail | null> {
+function toMyBooking(b: BookingRow, shop: Shop, reviewed: boolean): MyBooking {
+  const chosen = shop.services.filter((s) => b.service_ids.includes(s.id));
+  return {
+    id: b.id,
+    status: b.status,
+    mode: b.mode,
+    slotTime: b.slot_time,
+    bookingDate: b.booking_date,
+    totalAmount: b.total_amount,
+    createdAt: b.created_at,
+    serviceNames: chosen.map((s) => s.name),
+    totalDuration: chosen.reduce((a, s) => a + s.durationMinutes, 0),
+    barberName: b.barber_id
+      ? shop.barbers.find((x) => x.id === b.barber_id)?.name ?? null
+      : null,
+    reviewed,
+    shop,
+  };
+}
+
+/** One booking owned by the current user. */
+export async function getBookingDetail(bookingId: string): Promise<MyBooking | null> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -207,69 +221,18 @@ export async function getBookingDetail(
     .maybeSingle<BookingRow>();
   if (!booking) return null;
 
-  const shop = await getShopBySlugById(booking.shop_id);
+  const [shop, { count }] = await Promise.all([
+    getShopById(supabase, booking.shop_id),
+    supabase
+      .from("reviews")
+      .select("id", { count: "exact", head: true })
+      .eq("booking_id", booking.id),
+  ]);
   if (!shop) return null;
-
-  // Service names + duration from the shop's hydrated services.
-  const chosen = shop.services.filter((s) => booking.service_ids.includes(s.id));
-  const barberName = booking.barber_id
-    ? shop.barbers.find((b) => b.id === booking.barber_id)?.name ?? null
-    : null;
-
-  return {
-    id: booking.id,
-    mode: booking.mode,
-    slotTime: booking.slot_time,
-    status: booking.status,
-    totalAmount: booking.total_amount,
-    serviceNames: chosen.map((s) => s.name),
-    totalDuration: chosen.reduce((a, s) => a + s.durationMinutes, 0),
-    barberName,
-    shop,
-  };
+  return toMyBooking(booking, shop, (count ?? 0) > 0);
 }
 
-/** Internal: hydrate a shop by id (published or not — used for the owner's own booking). */
-async function getShopBySlugById(shopId: string): Promise<Shop | null> {
-  const supabase = await createClient();
-  const { data: shopRow } = await supabase
-    .from("shops")
-    .select("*")
-    .eq("id", shopId)
-    .maybeSingle<ShopRow>();
-  if (!shopRow) return null;
-
-  const [{ data: services }, { data: barbers }, { data: reviews }] =
-    await Promise.all([
-      supabase.from("services").select("*").eq("shop_id", shopId),
-      supabase.from("barbers").select("*").eq("shop_id", shopId),
-      supabase
-        .from("reviews")
-        .select("*, profiles(full_name)")
-        .eq("shop_id", shopId),
-    ]);
-
-  return mapShop(
-    shopRow,
-    (services as ServiceRow[]) ?? [],
-    (barbers as BarberRow[]) ?? [],
-    (reviews as ReviewWithProfile[]) ?? []
-  );
-}
-
-
-export interface MyBooking {
-  id: string;
-  status: string;
-  mode: "queue" | "slot";
-  slotTime: string | null;
-  totalAmount: number;
-  createdAt: string;
-  serviceNames: string[];
-  shop: Shop;
-}
-
-/** All bookings for the current user (newest first), hydrated with shop + services. */
+/** All of the current user's bookings, newest first. */
 export async function getMyBookings(): Promise<MyBooking[]> {
   const supabase = await createClient();
   const {
@@ -277,41 +240,27 @@ export async function getMyBookings(): Promise<MyBooking[]> {
   } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data: rows } = await supabase
+  const { data } = await supabase
     .from("bookings")
     .select("*")
     .eq("customer_id", user.id)
     .order("created_at", { ascending: false });
-
-  const bookings = (rows as BookingRow[]) ?? [];
+  const bookings = (data as BookingRow[]) ?? [];
   if (bookings.length === 0) return [];
 
-  // Hydrate each unique shop once.
   const shopIds = Array.from(new Set(bookings.map((b) => b.shop_id)));
-  const shops = await Promise.all(shopIds.map((sid) => getShopBySlugById(sid)));
-  const shopMap = new Map<string, Shop>();
-  shopIds.forEach((sid, i) => {
-    const s = shops[i];
-    if (s) shopMap.set(sid, s);
-  });
+  const [{ data: shopRows }, { data: reviewRows }] = await Promise.all([
+    supabase.from("shops").select("*").in("id", shopIds),
+    supabase.from("reviews").select("booking_id").eq("customer_id", user.id),
+  ]);
+  const shops = await hydrate(supabase, (shopRows as ShopRow[]) ?? []);
+  const shopMap = new Map(shops.map((s) => [s.id, s]));
+  const reviewed = new Set(
+    ((reviewRows as { booking_id: string | null }[]) ?? []).map((r) => r.booking_id)
+  );
 
-  return bookings
-    .map((b) => {
-      const shop = shopMap.get(b.shop_id);
-      if (!shop) return null;
-      const names = shop.services
-        .filter((s) => b.service_ids.includes(s.id))
-        .map((s) => s.name);
-      return {
-        id: b.id,
-        status: b.status,
-        mode: b.mode,
-        slotTime: b.slot_time,
-        totalAmount: b.total_amount,
-        createdAt: b.created_at,
-        serviceNames: names,
-        shop,
-      } as MyBooking;
-    })
-    .filter((b): b is MyBooking => b !== null);
+  return bookings.flatMap((b) => {
+    const shop = shopMap.get(b.shop_id);
+    return shop ? [toMyBooking(b, shop, reviewed.has(b.id))] : [];
+  });
 }

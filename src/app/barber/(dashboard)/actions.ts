@@ -1,42 +1,44 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { getOwnedShop } from "@/lib/barber";
 
-async function ownedShopId(): Promise<{ shopId: string; supabase: Awaited<ReturnType<typeof createClient>> } | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data } = await supabase
-    .from("shops")
-    .select("id")
-    .eq("owner_id", user.id)
-    .limit(1)
-    .maybeSingle();
-  if (!data) return null;
-  return { shopId: data.id as string, supabase };
+function refresh() {
+  revalidatePath("/barber", "layout");
+  revalidatePath("/");
 }
 
-/** Publish / unpublish the shop (visible to customers when published). */
-export async function setPublished(published: boolean) {
-  const ctx = await ownedShopId();
-  if (!ctx) return;
-  await ctx.supabase
+/** Publish / unpublish. Publishing needs at least one active service. */
+export async function setPublished(published: boolean): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await getOwnedShop();
+  if (!ctx) return { ok: false, error: "Not authorised." };
+
+  if (published) {
+    const { count } = await ctx.supabase
+      .from("services")
+      .select("id", { count: "exact", head: true })
+      .eq("shop_id", ctx.shop.id)
+      .eq("is_active", true);
+    if ((count ?? 0) === 0) {
+      return { ok: false, error: "Add at least one active service before publishing." };
+    }
+  }
+
+  const { error } = await ctx.supabase
     .from("shops")
     .update({ is_published: published })
-    .eq("id", ctx.shopId);
-  revalidatePath("/barber/dashboard");
+    .eq("id", ctx.shop.id);
+  if (error) return { ok: false, error: error.message };
+  refresh();
+  return { ok: true };
 }
 
-/** Toggle open/closed status. */
-export async function setOpenNow(open: boolean) {
-  const ctx = await ownedShopId();
-  if (!ctx) return;
-  await ctx.supabase
-    .from("shops")
-    .update({ open_now: open })
-    .eq("id", ctx.shopId);
-  revalidatePath("/barber/dashboard");
+/** Open / close for walk-ins. */
+export async function setOpenNow(open: boolean): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await getOwnedShop();
+  if (!ctx) return { ok: false, error: "Not authorised." };
+  const { error } = await ctx.supabase.from("shops").update({ open_now: open }).eq("id", ctx.shop.id);
+  if (error) return { ok: false, error: error.message };
+  refresh();
+  return { ok: true };
 }

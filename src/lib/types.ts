@@ -40,6 +40,7 @@ export interface Shop {
   lng: number;
   rating: number;
   reviewCount: number;
+  isVerified: boolean;
   priceLevel: 1 | 2 | 3; // ₹ / ₹₹ / ₹₹₹
   coverImage: string;
   gallery: string[];

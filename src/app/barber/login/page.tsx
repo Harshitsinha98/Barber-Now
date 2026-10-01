@@ -1,8 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Scissors, Store } from "lucide-react";
 import { OtpLogin } from "@/components/OtpLogin";
+import { getSessionUser } from "@/lib/auth";
 
-export default function BarberLoginPage() {
+export default async function BarberLoginPage() {
+  if (await getSessionUser()) redirect("/barber/after-login");
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-ink px-4 py-12">
       <div className="w-full max-w-md">
@@ -22,6 +26,19 @@ export default function BarberLoginPage() {
 
           <OtpLogin redirectTo="/barber/after-login" />
         </div>
+
+        <ul className="mt-6 grid grid-cols-2 gap-3 text-sm text-cream/80">
+          {[
+            "✂️ Free listing",
+            "📲 Online bookings",
+            "⏱️ Live queue, no crowding",
+            "⭐ Reviews that bring customers",
+          ].map((t) => (
+            <li key={t} className="rounded-xl bg-white/5 px-3 py-2.5">
+              {t}
+            </li>
+          ))}
+        </ul>
 
         <p className="mt-5 text-center text-sm text-cream/70">
           Looking to book a haircut instead?{" "}

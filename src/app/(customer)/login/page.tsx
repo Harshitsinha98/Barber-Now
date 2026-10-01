@@ -1,8 +1,23 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Scissors } from "lucide-react";
 import { OtpLogin } from "@/components/OtpLogin";
+import { getSessionUser } from "@/lib/auth";
 
-export default function LoginPage() {
+/** Only allow same-site relative redirects (prevents open-redirects). */
+function safeNext(next?: string): string {
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+}
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  const target = safeNext(next);
+  if (await getSessionUser()) redirect(target);
+
   return (
     <div className="container-app flex min-h-[75vh] items-center justify-center py-12">
       <div className="w-full max-w-md">
@@ -19,19 +34,14 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <OtpLogin redirectTo="/" />
+          <OtpLogin redirectTo={target} />
         </div>
 
-        <p className="mt-4 text-center text-xs text-ink/40">
-          By continuing you agree to our{" "}
-          <Link href="#" className="underline">
-            Terms
-          </Link>{" "}
-          &amp;{" "}
-          <Link href="#" className="underline">
-            Privacy Policy
+        <p className="mt-4 text-center text-sm text-ink/50">
+          Own a barbershop?{" "}
+          <Link href="/barber/login" className="font-semibold text-gold-dark">
+            Partner login
           </Link>
-          .
         </p>
       </div>
     </div>
