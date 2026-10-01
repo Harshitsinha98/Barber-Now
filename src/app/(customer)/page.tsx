@@ -12,7 +12,12 @@ import {
   Smartphone,
 } from "lucide-react";
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const q = String((await searchParams).q ?? "").slice(0, 80);
   const shops = await getPublishedShops();
   const openCount = shops.filter((s) => s.openNow).length;
   const cityCount = new Set(shops.map((s) => s.city).filter(Boolean)).size;
@@ -45,12 +50,28 @@ export default async function HomePage() {
               Discover top-rated barbershops near you, check live queue status,
               and reserve your slot online. Made for India. 🇮🇳
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="#discover" className="btn-gold">
-                <Search size={18} /> Find shops near me
+            {/* Search by name — submits to ?q= and jumps to the results */}
+            <form
+              action="/#discover"
+              className="mt-8 flex max-w-xl items-center gap-2 rounded-full bg-white p-1.5 pl-5 shadow-premium"
+            >
+              <Search size={18} className="shrink-0 text-ink/40" />
+              <input
+                name="q"
+                type="search"
+                defaultValue={q}
+                placeholder="Search shop name, area or service…"
+                aria-label="Search barbershops"
+                className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink/40"
+              />
+              <button className="btn-gold shrink-0 px-5 py-2.5">Search</button>
+            </form>
+            <div className="mt-4 flex flex-wrap gap-4 text-sm">
+              <Link href="#discover" className="font-medium text-gold hover:text-gold-light">
+                📍 Find shops near me
               </Link>
-              <Link href="#how" className="btn-outline border-white/20 bg-white/5 text-cream hover:border-white/50">
-                How it works
+              <Link href="#how" className="text-cream/70 hover:text-cream">
+                How it works →
               </Link>
             </div>
 
@@ -64,7 +85,7 @@ export default async function HomePage() {
       </section>
 
       {/* DISCOVER */}
-      <DiscoverSection shops={shops} />
+      <DiscoverSection key={q} shops={shops} initialQuery={q} />
 
       {/* HOW IT WORKS */}
       <section id="how" className="scroll-mt-20 bg-white py-16">
