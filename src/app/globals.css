@@ -2,11 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-display: "Playfair Display", Georgia, serif;
-}
-
 * {
   box-sizing: border-box;
 }
@@ -17,44 +12,94 @@ html {
 
 body {
   @apply bg-cream text-ink antialiased;
+  font-feature-settings: "ss01", "cv11";
 }
 
-/* Utility component classes */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.025em;
+}
+
+::selection {
+  @apply bg-gold text-ink;
+}
+
 @layer components {
   .container-app {
     @apply mx-auto w-full max-w-7xl px-5 sm:px-8;
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
   }
 
   .btn-primary {
-    @apply btn bg-ink text-cream hover:bg-ink-soft shadow-card;
+    @apply btn bg-ink text-cream shadow-card hover:bg-ink-soft;
   }
 
   .btn-gold {
-    @apply btn bg-gold text-ink hover:bg-gold-dark;
+    @apply btn bg-gold text-ink shadow-[0_8px_24px_-8px_rgba(255,150,30,0.7)] hover:-translate-y-px hover:bg-gold-light hover:shadow-glow;
   }
 
   .btn-outline {
-    @apply btn border border-ink/15 bg-white/70 text-ink hover:border-ink/40;
+    @apply btn border border-ink/15 bg-white/70 text-ink hover:border-ink/40 hover:bg-white;
   }
 
   .card {
-    @apply rounded-2xl border border-black/5 bg-white shadow-card;
+    @apply rounded-2xl border border-black/[0.06] bg-white shadow-card;
   }
 
   .badge {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
   }
+
+  /* Amber → coral brand gradient for text */
+  .text-gradient {
+    @apply bg-gradient-to-r from-gold via-[#ff8a3d] to-coral bg-clip-text text-transparent;
+  }
+
+  .glass {
+    @apply border border-white/10 bg-white/[0.06] backdrop-blur-xl;
+  }
+
+  /* Small uppercase section label */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-gold-dark;
+  }
 }
 
-/* Hide scrollbar for horizontal scrollers */
+/* Faint grid for dark sections */
+.bg-grid {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Native <details> disclosure arrow off (FAQ uses its own icon) */
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

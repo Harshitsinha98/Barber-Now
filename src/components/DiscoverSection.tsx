@@ -161,8 +161,9 @@ export function DiscoverSection({
   if (shops.length === 0) {
     return (
       <section id="discover" className="container-app scroll-mt-20 py-16">
-        <div className="card mx-auto max-w-2xl p-10 text-center">
-          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gold/15 text-gold-dark">
+        <div className="relative mx-auto max-w-2xl overflow-hidden rounded-3xl border border-black/5 bg-white p-10 text-center">
+          <div className="absolute -top-24 left-1/2 h-48 w-80 -translate-x-1/2 rounded-full bg-gold/20 blur-3xl" />
+          <span className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-ink text-gold">
             <MapPin size={24} />
           </span>
           <h2 className="mt-4 font-display text-2xl font-bold text-ink">
@@ -181,16 +182,16 @@ export function DiscoverSection({
   }
 
   return (
-    <section id="discover" className="container-app scroll-mt-20 py-16">
-      <div className="flex flex-col gap-2 text-center">
-        <span className="mx-auto badge bg-gold/15 text-gold-dark">
-          <MapPin size={12} /> Barbershops near you
+    <section id="discover" className="container-app scroll-mt-20 py-20">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <span className="eyebrow">
+          <MapPin size={12} /> Near you
         </span>
-        <h2 className="font-display text-3xl font-bold text-ink sm:text-4xl">
-          Find &amp; book your next cut
+        <h2 className="font-display text-4xl font-bold text-ink sm:text-5xl">
+          Pick a shop. <span className="text-gradient">Skip the line.</span>
         </h2>
         <p className="mx-auto max-w-xl text-ink/60">
-          Real-time queues, verified ratings and instant booking — all in one place.
+          Live wait times, real reviews and instant booking.
         </p>
       </div>
 
@@ -332,7 +333,7 @@ export function DiscoverSection({
 
       {/* Grid */}
       {filtered.length > 0 ? (
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map(({ shop, distance }) => (
             <ShopCard key={shop.id} shop={shop} distanceKm={distance} />
           ))}
