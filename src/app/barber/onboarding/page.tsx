@@ -142,7 +142,7 @@ export default async function OnboardingPage({
 
           <div className="mt-auto hidden rounded-2xl bg-white/5 p-4 text-xs text-cream/60 lg:block">
             <p className="font-semibold text-cream">Why partners love it</p>
-            <p className="mt-1">0% commission · Free ads in the app · Live queue · Paid boosts when you want more customers.</p>
+            <p className="mt-1">0% commission · Ads included in the app · Live queue · Paid boosts when you want more customers.</p>
           </div>
         </div>
       </aside>
@@ -170,7 +170,7 @@ export default async function OnboardingPage({
 
             {step === 2 && shop && (
               <div className="space-y-6">
-                <ServiceForm />
+                <ServiceForm salonType={shop.salon_type} />
                 {services.length > 0 && (
                   <div className="divide-y divide-black/5 overflow-hidden rounded-2xl border border-black/5">
                     {services.map((s) => (

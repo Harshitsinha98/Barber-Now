@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ServiceRow } from "@/lib/supabase/database.types";
 import { formatINR } from "@/lib/utils";
 import { ServiceForm } from "./AddServiceForm";
+import { categoryLabel } from "@/lib/salon";
 import { deleteService, toggleService } from "./actions";
 import { Clock, Tag, Trash2, Pencil } from "lucide-react";
 
@@ -27,7 +28,7 @@ export function ServiceRowItem({ s }: { s: ServiceRow }) {
       <div className="min-w-[160px] flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="font-medium text-ink">{s.name}</p>
-          <span className="badge bg-black/5 capitalize text-ink/60">{s.category}</span>
+          <span className="badge bg-black/5 text-ink/60">{categoryLabel(s.category)}</span>
           {s.discount_percent ? (
             <span className="badge bg-emerald-50 text-emerald-700">
               <Tag size={10} /> {s.discount_percent}% off

@@ -8,7 +8,7 @@ export function Footer() {
         <div>
           <Logo />
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-cream/50">
-            Haircut, bina line ke. Live queues and instant booking for barbershops across India. 🇮🇳
+            Salon jao, line mein nahi. Live queues and instant booking at men&apos;s, women&apos;s and unisex salons across India. 🇮🇳
           </p>
         </div>
 
@@ -22,9 +22,11 @@ export function Footer() {
           ]}
         />
         <FooterCol
-          title="Barbers"
+          title="For salons"
           links={[
-            { label: "List your shop — free", href: "/barber/login" },
+            { label: "Partner with us", href: "/partner" },
+            { label: "How onboarding works", href: "/partner#process" },
+            { label: "Pricing — ₹1,499/month", href: "/partner#pricing" },
             { label: "Partner login", href: "/barber/login" },
           ]}
         />

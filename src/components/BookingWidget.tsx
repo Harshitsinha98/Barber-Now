@@ -175,10 +175,10 @@ export function BookingWidget({
         {/* Barber pick */}
         {shop.barbers.length > 0 && (
           <>
-            <Step n={2} title="Choose barber" />
+            <Step n={2} title="Choose stylist" />
             <div className="flex flex-wrap gap-2">
               <Chip active={barberId === "any"} onClick={() => setBarberId("any")}>
-                Any barber
+                Any stylist
               </Chip>
               {shop.barbers.map((b) => (
                 <Chip key={b.id} active={barberId === b.id} onClick={() => setBarberId(b.id)}>

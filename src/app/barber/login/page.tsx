@@ -21,7 +21,7 @@ export default async function BarberLoginPage() {
               <Store size={26} />
             </span>
             <h1 className="mt-4 font-display text-2xl font-bold text-ink">
-              Barber Partner Login
+              Salon Partner Login
             </h1>
             <p className="mt-1 text-sm text-ink/60">
               Manage your shop, services &amp; live queue. Sign in with your
@@ -34,7 +34,7 @@ export default async function BarberLoginPage() {
 
         <ul className="mt-6 grid grid-cols-2 gap-3 text-sm text-cream/80">
           {[
-            "✂️ Free listing",
+            "✂️ 0% commission",
             "📲 Online bookings",
             "⏱️ Live queue, no crowding",
             "⭐ Reviews that bring customers",
@@ -46,7 +46,13 @@ export default async function BarberLoginPage() {
         </ul>
 
         <p className="mt-5 text-center text-sm text-cream/70">
-          Looking to book a haircut instead?{" "}
+          New to BarberNow?{" "}
+          <Link href="/partner" className="font-semibold text-gold">
+            See pricing &amp; how onboarding works →
+          </Link>
+        </p>
+        <p className="mt-2 text-center text-sm text-cream/70">
+          Looking to book an appointment instead?{" "}
           <Link href="/login" className="font-semibold text-gold">
             Customer sign in
           </Link>

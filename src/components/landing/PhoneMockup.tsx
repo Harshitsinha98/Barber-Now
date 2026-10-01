@@ -27,7 +27,7 @@ export function PhoneMockup() {
         <div className="space-y-3 rounded-[2rem] bg-cream p-4 text-ink">
           <div className="flex items-center justify-between text-[11px] text-ink/50">
             <span className="flex items-center gap-1">
-              <MapPin size={11} /> Sharma Salon · 0.8 km
+              <MapPin size={11} /> Glow Studio · 0.8 km
             </span>
             <span className="flex items-center gap-1 font-semibold text-emerald-600">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> Live
@@ -63,8 +63,8 @@ export function PhoneMockup() {
               <Scissors size={14} />
             </span>
             <div className="flex-1 text-xs">
-              <p className="font-semibold">Haircut + Beard</p>
-              <p className="text-ink/50">45 min · ₹300</p>
+              <p className="font-semibold">Haircut + Threading</p>
+              <p className="text-ink/50">55 min · ₹660</p>
             </div>
           </div>
 

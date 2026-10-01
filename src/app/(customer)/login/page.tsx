@@ -38,7 +38,7 @@ export default async function LoginPage({
         </div>
 
         <p className="mt-4 text-center text-sm text-ink/50">
-          Own a barbershop?{" "}
+          Own a salon?{" "}
           <Link href="/barber/login" className="font-semibold text-gold-dark">
             Partner login
           </Link>

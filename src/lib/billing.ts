@@ -100,6 +100,82 @@ export async function fulfillPayment(
   return { ok: true };
 }
 
+/** "test" | "live" | null, from the key prefix. */
+export function razorpayMode(): "test" | "live" | null {
+  if (!razorpay.keyId) return null;
+  return razorpay.keyId.startsWith("rzp_live_") ? "live" : "test";
+}
+
+async function rzp<T>(path: string, init?: RequestInit): Promise<T> {
+  const auth = Buffer.from(`${razorpay.keyId}:${razorpay.keySecret}`).toString("base64");
+  const res = await fetch(`https://api.razorpay.com/v1${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", Authorization: `Basic ${auth}`, ...(init?.headers ?? {}) },
+    cache: "no-store",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error?.description || `Razorpay responded ${res.status}`);
+  return data as T;
+}
+
+type RzpPayment = { id: string; status: string; amount: number; currency: string; error_description?: string | null };
+
+/** Mark a pending payment failed (never touches a paid one). */
+export async function markPaymentFailed(paymentId: string, reason?: string | null) {
+  await createAdminClient()
+    .from("payments")
+    .update({ status: "failed", note: reason?.slice(0, 200) || "Payment failed" })
+    .eq("id", paymentId)
+    .eq("status", "created");
+}
+
+/**
+ * Ask Razorpay what really happened to a pending order and settle it:
+ *  captured → fulfil · authorized → capture then fulfil · all failed → failed.
+ * Used by the "Check status" buttons and admin reconciliation.
+ */
+export async function syncPaymentWithRazorpay(
+  paymentId: string
+): Promise<{ ok: boolean; status: string; error?: string }> {
+  if (!razorpay.enabled) return { ok: false, status: "unknown", error: "Razorpay keys are not configured." };
+  const db = createAdminClient();
+  const { data: pay } = await db.from("payments").select("*").eq("id", paymentId).maybeSingle<PaymentRow>();
+  if (!pay) return { ok: false, status: "unknown", error: "Payment not found." };
+  if (pay.status === "paid") return { ok: true, status: "paid" };
+  if (!pay.razorpay_order_id) return { ok: false, status: pay.status, error: "No Razorpay order linked." };
+
+  try {
+    const { items } = await rzp<{ items: RzpPayment[] }>(`/orders/${pay.razorpay_order_id}/payments`);
+    const captured = items.find((p) => p.status === "captured");
+    if (captured) {
+      await fulfillPayment(pay.id, { razorpayPaymentId: captured.id });
+      return { ok: true, status: "paid" };
+    }
+    const authorized = items.find((p) => p.status === "authorized");
+    if (authorized) {
+      await rzp(`/payments/${authorized.id}/capture`, {
+        method: "POST",
+        body: JSON.stringify({ amount: authorized.amount, currency: authorized.currency }),
+      });
+      await fulfillPayment(pay.id, { razorpayPaymentId: authorized.id });
+      return { ok: true, status: "paid" };
+    }
+    // Old order with only failed attempts → close it out.
+    const ageMin = (Date.now() - new Date(pay.created_at).getTime()) / 60000;
+    if (items.length > 0 && items.every((p) => p.status === "failed") && ageMin > 15) {
+      await markPaymentFailed(pay.id, items[items.length - 1]?.error_description);
+      return { ok: true, status: "failed" };
+    }
+    if (items.length === 0 && ageMin > 60) {
+      await markPaymentFailed(pay.id, "Checkout abandoned");
+      return { ok: true, status: "failed" };
+    }
+    return { ok: true, status: "pending" };
+  } catch (e) {
+    return { ok: false, status: pay.status, error: (e as Error).message };
+  }
+}
+
 /** Admin: record an offline (UPI/cash) payment and apply it immediately. */
 export async function recordManualPayment(shopId: string, plan: Plan, note?: string) {
   const db = createAdminClient();

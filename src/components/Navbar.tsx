@@ -52,10 +52,10 @@ export function Navbar({ userLabel }: { userLabel?: string | null }) {
 
           <div className="hidden items-center gap-2 md:flex">
             <Link
-              href="/barber/login"
+              href="/partner"
               className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-cream/60 hover:text-cream"
             >
-              <Store size={15} /> For barbers
+              <Store size={15} /> For salons
             </Link>
             {isLoggedIn ? (
               <>
@@ -98,11 +98,11 @@ export function Navbar({ userLabel }: { userLabel?: string | null }) {
                 </Link>
               ))}
               <Link
-                href="/barber/login"
+                href="/partner"
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-cream/80 hover:bg-white/5"
               >
-                <Store size={16} /> For barbers
+                <Store size={16} /> For salons
               </Link>
               {isLoggedIn ? (
                 <form action={logoutCustomer}>

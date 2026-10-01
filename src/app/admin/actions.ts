@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getAdmin } from "@/lib/admin-auth";
 import { createClient } from "@/lib/supabase/server";
 import { findPlan } from "@/lib/plans";
-import { recordManualPayment } from "@/lib/billing";
+import { recordManualPayment, syncPaymentWithRazorpay } from "@/lib/billing";
 
 function refresh() {
   revalidatePath("/admin", "layout");
@@ -73,6 +73,32 @@ export async function adminRecordPayment(fd: FormData) {
   if (!admin || !id || !plan) return;
   const ref = String(fd.get("note") ?? "").trim().slice(0, 120);
   await recordManualPayment(id, plan, ref ? `Offline: ${ref}` : "Offline payment recorded by admin");
+  refresh();
+  revalidatePath("/barber", "layout");
+}
+
+/** Reconcile one pending payment with Razorpay. */
+export async function adminSyncPayment(fd: FormData) {
+  const admin = await getAdmin();
+  const id = String(fd.get("id") ?? "");
+  if (!admin || !id) return;
+  await syncPaymentWithRazorpay(id);
+  refresh();
+  revalidatePath("/barber", "layout");
+}
+
+/** Reconcile every payment still pending (older than 2 minutes). */
+export async function adminSyncAllPending() {
+  const admin = await getAdmin();
+  if (!admin) return;
+  const { data } = await admin.db
+    .from("payments")
+    .select("id")
+    .eq("status", "created")
+    .not("razorpay_order_id", "is", null)
+    .lt("created_at", new Date(Date.now() - 2 * 60000).toISOString())
+    .limit(50);
+  for (const p of data ?? []) await syncPaymentWithRazorpay(p.id as string);
   refresh();
   revalidatePath("/barber", "layout");
 }

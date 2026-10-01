@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  IndianRupee,
   Store,
   CalendarClock,
   Users,
@@ -17,6 +18,7 @@ import { adminLogout } from "@/app/admin/actions";
 const items = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/admin/shops", label: "Shops", icon: Store },
+  { href: "/admin/payments", label: "Payments", icon: IndianRupee },
   { href: "/admin/bookings", label: "Bookings", icon: CalendarClock },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/reviews", label: "Reviews", icon: Star },

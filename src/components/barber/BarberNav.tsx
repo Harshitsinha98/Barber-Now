@@ -44,7 +44,7 @@ export function BarberNav({
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 z-40 flex w-full shrink-0 flex-col gap-1 border-b border-white/10 bg-ink p-3 text-cream md:h-screen md:w-64 md:border-b-0 md:border-r md:p-4">
+    <aside className="sticky top-0 z-40 flex w-full shrink-0 flex-col gap-1 border-b border-white/10 bg-ink p-3 text-cream print:hidden md:h-screen md:w-64 md:border-b-0 md:border-r md:p-4">
       <div className="mb-2 flex items-center justify-between gap-2 px-2 md:mb-4">
         <Link href="/barber/dashboard" className="flex min-w-0 items-center gap-2">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gold text-ink">

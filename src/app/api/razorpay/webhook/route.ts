@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * Razorpay webhook (backup path if the browser closes before confirming).
  * Configure in Razorpay Dashboard → Webhooks:
  *   URL:    https://<your-domain>/api/razorpay/webhook
- *   Events: payment.captured, order.paid
+ *   Events: payment.captured, order.paid, payment.failed
  *   Secret: RAZORPAY_WEBHOOK_SECRET
  */
 export async function POST(req: Request) {
@@ -18,7 +18,11 @@ export async function POST(req: Request) {
 
   let event: {
     event?: string;
-    payload?: { payment?: { entity?: { id?: string; order_id?: string; status?: string } } };
+    payload?: {
+      payment?: {
+        entity?: { id?: string; order_id?: string; status?: string; error_description?: string | null };
+      };
+    };
   };
   try {
     event = JSON.parse(raw);
@@ -36,6 +40,19 @@ export async function POST(req: Request) {
         .eq("razorpay_order_id", p.order_id)
         .maybeSingle();
       if (pay) await fulfillPayment(pay.id as string, { razorpayPaymentId: p.id });
+    }
+  }
+
+  // A failed attempt doesn't end the order (the customer may retry), so we
+  // only record the reason; reconciliation marks it failed if nothing succeeds.
+  if (event.event === "payment.failed") {
+    const p = event.payload?.payment?.entity;
+    if (p?.order_id) {
+      await createAdminClient()
+        .from("payments")
+        .update({ note: `Last attempt failed: ${String(p.error_description ?? "unknown").slice(0, 150)}` })
+        .eq("razorpay_order_id", p.order_id)
+        .eq("status", "created");
     }
   }
   return NextResponse.json({ ok: true });
