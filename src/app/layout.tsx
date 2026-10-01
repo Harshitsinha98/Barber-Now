@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Inter, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
@@ -8,23 +8,25 @@ const inter = Inter({
   display: "swap",
 });
 
-const playfair = Playfair_Display({
+const display = Bricolage_Grotesque({
   subsets: ["latin"],
   variable: "--font-display",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Barber Now — Skip the wait. Book your barber.",
+  title: "BarberNow — Haircut, bina line ke.",
   description:
-    "Discover top-rated barbershops near you, view real-time queue status, and book your slot online. No more waiting. Made for India.",
+    "Find barbershops near you, see the live queue and book your spot from your phone. No more waiting. Made for India.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export const viewport: Viewport = {
+  themeColor: "#0b0b10",
+};
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+    <html lang="en" className={`${inter.variable} ${display.variable}`}>
       <body className="flex min-h-screen flex-col">{children}</body>
     </html>
   );

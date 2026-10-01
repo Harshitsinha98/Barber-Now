@@ -49,3 +49,17 @@ export async function updateShopSettings(
   revalidatePath(`/shop/${ctx.shop.slug}`);
   return { error: null, ok: true };
 }
+
+/** Turn customer song requests on / off for this shop. */
+export async function setSongRequests(on: boolean): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await getOwnedShop();
+  if (!ctx) return { ok: false, error: "Not authorised." };
+  const { error } = await ctx.supabase
+    .from("shops")
+    .update({ accepts_song_requests: on })
+    .eq("id", ctx.shop.id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/barber", "layout");
+  revalidatePath(`/shop/${ctx.shop.slug}`);
+  return { ok: true };
+}

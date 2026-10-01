@@ -1,22 +1,14 @@
 import Link from "next/link";
-import { Scissors } from "lucide-react";
+import { Logo } from "./Navbar";
 
 export function Footer() {
   return (
-    <footer className="mt-20 bg-ink text-cream/80">
-      <div className="container-app grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
+    <footer className="relative overflow-hidden bg-ink pb-24 text-cream/70 md:pb-0">
+      <div className="container-app grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gold text-ink">
-              <Scissors size={18} />
-            </span>
-            <span className="font-display text-xl font-bold text-cream">
-              Barber<span className="text-gold">Now</span>
-            </span>
-          </div>
-          <p className="mt-4 max-w-xs text-sm leading-relaxed text-cream/60">
-            Skip the wait. Discover barbershops near you, check live queues and
-            book your slot in seconds. Made for India. 🇮🇳
+          <Logo />
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-cream/50">
+            Haircut, bina line ke. Live queues and instant booking for barbershops across India. 🇮🇳
           </p>
         </div>
 
@@ -40,14 +32,22 @@ export function Footer() {
           title="Help"
           links={[
             { label: "Sign in", href: "/login" },
-            { label: "Contact: support@barbernow.in", href: "mailto:support@barbernow.in" },
+            { label: "support@barbernow.in", href: "mailto:support@barbernow.in" },
           ]}
         />
       </div>
+
+      <p
+        aria-hidden
+        className="pointer-events-none select-none text-center font-display text-[22vw] font-extrabold leading-[0.75] tracking-tighter text-white/[0.03]"
+      >
+        barbernow
+      </p>
+
       <div className="border-t border-white/10">
-        <div className="container-app flex flex-col items-center justify-between gap-2 py-5 text-xs text-cream/50 sm:flex-row">
+        <div className="container-app flex flex-col items-center justify-between gap-2 py-5 text-xs text-cream/40 sm:flex-row">
           <p>© {new Date().getFullYear()} BarberNow. All rights reserved.</p>
-          <p>Built with ✂️ for Indian barbers &amp; customers.</p>
+          <p>Made with ✂️ in India.</p>
         </div>
       </div>
     </footer>
@@ -57,11 +57,11 @@ export function Footer() {
 function FooterCol({ title, links }: { title: string; links: { label: string; href: string }[] }) {
   return (
     <div>
-      <h4 className="text-sm font-semibold uppercase tracking-wider text-cream">{title}</h4>
+      <h4 className="text-xs font-semibold uppercase tracking-wider text-cream">{title}</h4>
       <ul className="mt-4 space-y-3">
         {links.map((l) => (
           <li key={l.label}>
-            <Link href={l.href} className="text-sm text-cream/60 transition-colors hover:text-gold">
+            <Link href={l.href} className="text-sm text-cream/50 transition-colors hover:text-gold">
               {l.label}
             </Link>
           </li>

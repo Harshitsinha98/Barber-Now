@@ -24,6 +24,7 @@ import {
   ChevronRight,
   LoaderCircle,
   Moon,
+  Music,
 } from "lucide-react";
 
 type Mode = "queue" | "slot";
@@ -41,6 +42,7 @@ export function BookingWidget({
   const [mode, setMode] = useState<Mode>(shop.openNow ? "queue" : "slot");
   const [slot, setSlot] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [song, setSong] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // IST "now" is only known on the client — avoids SSR/client mismatch.
@@ -68,6 +70,7 @@ export function BookingWidget({
       barberId: barberId === "any" ? null : barberId,
       mode,
       slotTime: mode === "slot" ? slot : null,
+      songRequest: shop.acceptsSongRequests ? song : null,
     });
 
     if (!result.ok) {
@@ -222,6 +225,27 @@ export function BookingWidget({
               </div>
             )}
           </>
+        )}
+
+        {/* Song request (optional, only if the shop accepts them) */}
+        {shop.acceptsSongRequests && (
+          <div className="mt-5 rounded-xl border border-dashed border-gold/50 bg-gold/5 p-3">
+            <label htmlFor="song" className="flex items-center gap-2 text-sm font-semibold text-ink">
+              <Music size={15} className="text-gold-dark" /> Request a song
+              <span className="text-xs font-normal text-ink/40">(optional)</span>
+            </label>
+            <input
+              id="song"
+              value={song}
+              onChange={(e) => setSong(e.target.value.slice(0, 100))}
+              maxLength={100}
+              placeholder="e.g. Kesariya – Arijit Singh"
+              className="mt-2 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+            />
+            <p className="mt-1.5 text-[11px] text-ink/50">
+              We&apos;ll try to play it while you&apos;re in the chair 🎶 — not guaranteed.
+            </p>
+          </div>
         )}
 
         {/* Summary */}

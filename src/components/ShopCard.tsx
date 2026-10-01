@@ -1,10 +1,16 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Shop } from "@/lib/types";
-import { priceLevelLabel, formatDistance, effectivePrice, formatINR } from "@/lib/utils";
-import { Stars } from "./Stars";
-import { QueueBadge } from "./QueueBadge";
-import { MapPin, Navigation, BadgeCheck } from "lucide-react";
+import {
+  priceLevelLabel,
+  formatDistance,
+  effectivePrice,
+  formatINR,
+  estimatedWaitMinutes,
+  waitLabel,
+  queueStatusStyle,
+} from "@/lib/utils";
+import { MapPin, Navigation, BadgeCheck, Star, ArrowUpRight, Music } from "lucide-react";
 
 export function ShopCard({
   shop,
@@ -14,76 +20,86 @@ export function ShopCard({
   /** Live distance from the user's device; hidden when unknown. */
   distanceKm?: number | null;
 }) {
-  const fromPrice = shop.services.length
-    ? Math.min(...shop.services.map(effectivePrice))
-    : null;
-  const hasDiscount = shop.services.some((s) => s.discountPercent);
+  const fromPrice = shop.services.length ? Math.min(...shop.services.map(effectivePrice)) : null;
+  const maxOff = Math.max(0, ...shop.services.map((s) => s.discountPercent ?? 0));
+  const q = queueStatusStyle(shop.queue.status);
 
   return (
     <Link
       href={`/shop/${shop.slug}`}
-      className="card group overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-premium"
+      className="group relative flex flex-col overflow-hidden rounded-3xl border border-black/5 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-premium"
     >
-      <div className="relative h-48 w-full overflow-hidden">
+      <div className="relative aspect-[4/3] w-full overflow-hidden">
         <Image
           src={shop.coverImage}
           alt={shop.name}
           fill
           sizes="(max-width: 768px) 100vw, 33vw"
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          className="object-cover transition-transform duration-700 group-hover:scale-110"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        <div className="absolute left-3 top-3">
+        <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/10 to-transparent" />
+
+        <div className="absolute left-3 right-3 top-3 flex items-start justify-between gap-2">
           {shop.openNow ? (
-            <QueueBadge shop={shop} />
+            <span className="flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-ink shadow">
+              <span className={`h-2 w-2 animate-pulse-dot rounded-full ${q.dot}`} />
+              {waitLabel(estimatedWaitMinutes(shop))} wait
+            </span>
           ) : (
-            <span className="badge bg-ink/80 text-cream">Closed</span>
+            <span className="rounded-full bg-ink/80 px-2.5 py-1 text-xs font-semibold text-cream backdrop-blur">
+              Closed now
+            </span>
+          )}
+          {maxOff > 0 && (
+            <span className="rounded-full bg-gradient-to-r from-gold to-coral px-2.5 py-1 text-xs font-bold text-ink shadow">
+              Up to {maxOff}% off
+            </span>
           )}
         </div>
-        {hasDiscount && (
-          <span className="badge absolute right-3 top-3 bg-emerald-500 text-white">Offers</span>
-        )}
-        {distanceKm != null && distanceKm > 0 && (
-          <div className="absolute bottom-3 left-3 flex items-center gap-1 text-xs font-medium text-cream">
-            <Navigation size={12} className="text-gold" />
-            {formatDistance(distanceKm)} away
+
+        <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between gap-2 text-cream">
+          <div className="min-w-0">
+            <h3 className="flex items-center gap-1.5 truncate font-display text-xl font-bold leading-tight">
+              <span className="truncate">{shop.name}</span>
+              {shop.isVerified && <BadgeCheck size={18} className="shrink-0 text-gold" />}
+            </h3>
+            <p className="flex items-center gap-1 truncate text-xs text-cream/75">
+              <MapPin size={11} /> {[shop.area, shop.city].filter(Boolean).join(", ")}
+              {distanceKm != null && distanceKm > 0 && (
+                <>
+                  <span className="mx-1 opacity-50">•</span>
+                  <Navigation size={11} className="text-gold" /> {formatDistance(distanceKm)}
+                </>
+              )}
+            </p>
           </div>
-        )}
+          <span className="flex h-9 w-9 shrink-0 translate-y-1 items-center justify-center rounded-full bg-gold text-ink opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+            <ArrowUpRight size={18} />
+          </span>
+        </div>
       </div>
 
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="flex items-center gap-1.5 font-display text-lg font-bold leading-tight text-ink">
-            {shop.name}
-            {shop.isVerified && <BadgeCheck size={16} className="shrink-0 text-gold-dark" />}
-          </h3>
-          <span className="shrink-0 text-sm font-semibold text-gold-dark">
-            {priceLevelLabel(shop.priceLevel)}
+      <div className="flex flex-1 items-center justify-between gap-3 p-4">
+        <div className="flex items-center gap-3 text-sm">
+          {shop.rating > 0 ? (
+            <span className="flex items-center gap-1 font-semibold text-ink">
+              <Star size={14} className="fill-gold text-gold" /> {shop.rating.toFixed(1)}
+              <span className="font-normal text-ink/40">({shop.reviewCount})</span>
+            </span>
+          ) : (
+            <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold-dark">New</span>
+          )}
+          <span className="text-ink/30">·</span>
+          <span className="font-medium text-ink/60">{priceLevelLabel(shop.priceLevel)}</span>
+          {shop.acceptsSongRequests && (
+            <Music size={14} className="text-coral" aria-label="Takes song requests" />
+          )}
+        </div>
+        {fromPrice != null && (
+          <span className="text-right text-xs text-ink/50">
+            from <span className="font-display text-base font-bold text-ink">{formatINR(fromPrice)}</span>
           </span>
-        </div>
-        {shop.tagline && <p className="mt-0.5 line-clamp-1 text-sm text-ink/60">{shop.tagline}</p>}
-
-        <div className="mt-3 flex items-center gap-2">
-          <Stars rating={shop.rating} showValue count={shop.reviewCount} />
-        </div>
-
-        <div className="mt-2 flex items-center gap-1 text-xs text-ink/50">
-          <MapPin size={12} />
-          {[shop.area, shop.city].filter(Boolean).join(", ")}
-        </div>
-
-        <div className="mt-4 flex items-center justify-between border-t border-black/5 pt-3">
-          <span className="text-xs text-ink/50">
-            {fromPrice != null && (
-              <>
-                From <span className="font-semibold text-ink">{formatINR(fromPrice)}</span>
-              </>
-            )}
-          </span>
-          <span className="text-sm font-semibold text-gold-dark group-hover:text-ink">
-            Book now →
-          </span>
-        </div>
+        )}
       </div>
     </Link>
   );

@@ -8,8 +8,13 @@ export default async function BarberLoginPage() {
   if (await getSessionUser()) redirect("/barber/after-login");
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink px-4 py-12">
-      <div className="w-full max-w-md">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-ink px-4 py-12">
+      <div className="bg-grid absolute inset-0" />
+      <div className="absolute -top-40 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-gradient-to-r from-gold/25 via-coral/20 to-transparent blur-3xl" />
+      <div className="relative w-full max-w-md">
+        <h2 className="mb-6 text-center font-display text-4xl font-extrabold text-cream">
+          Your shop, <span className="text-gradient">fully booked.</span>
+        </h2>
         <div className="rounded-2xl bg-cream p-8 shadow-premium">
           <div className="mb-6 text-center">
             <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-ink text-gold">
