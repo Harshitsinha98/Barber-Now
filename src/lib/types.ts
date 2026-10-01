@@ -41,6 +41,7 @@ export interface Shop {
   rating: number;
   reviewCount: number;
   isVerified: boolean;
+  acceptsSongRequests: boolean;
   priceLevel: 1 | 2 | 3; // ₹ / ₹₹ / ₹₹₹
   coverImage: string;
   gallery: string[];

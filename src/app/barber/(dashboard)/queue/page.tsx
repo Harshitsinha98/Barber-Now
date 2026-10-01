@@ -1,6 +1,6 @@
 import { requireBarberShop } from "@/lib/barber";
 import type { BookingRow, ServiceRow, BarberRow } from "@/lib/supabase/database.types";
-import { formatINR } from "@/lib/utils";
+import { formatINR, youtubeSearchUrl } from "@/lib/utils";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { startService, markDone, skipBooking, cancelBooking } from "./actions";
 import { WalkInForm } from "./WalkInForm";
@@ -16,6 +16,7 @@ import {
   Phone,
   Smartphone,
   Footprints,
+  Music,
 } from "lucide-react";
 
 function istToday(): string {
@@ -97,6 +98,23 @@ export default async function QueuePage() {
         <p className="text-sm text-ink/60">
           {names(b.service_ids)} · {minutes(b.service_ids)} min · {formatINR(b.total_amount)}
         </p>
+        {b.song_request && (
+          <a
+            href={youtubeSearchUrl(b.song_request)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition ${
+              b.status === "in_service"
+                ? "bg-rose-600 text-white hover:bg-rose-700"
+                : "bg-gold/15 text-gold-dark hover:bg-gold/25"
+            }`}
+            title="Open on YouTube"
+          >
+            <Music size={12} className="shrink-0" />
+            <span className="truncate">{b.song_request}</span>
+            <span className="shrink-0 opacity-80">▶ Play</span>
+          </a>
+        )}
         <p className="flex flex-wrap items-center gap-3 text-xs text-ink/40">
           {b.barber_id && barberMap.get(b.barber_id) && <span>✂️ {barberMap.get(b.barber_id)}</span>}
           {b.customer_phone && (
@@ -152,6 +170,7 @@ export default async function QueuePage() {
         <WalkInForm
           services={services.filter((s) => s.is_active).map((s) => ({ id: s.id, name: s.name, price: s.price }))}
           barbers={barbers.map((b) => ({ id: b.id, name: b.name }))}
+          songs={shop.accepts_song_requests === true}
         />
       </div>
 

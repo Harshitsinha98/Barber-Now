@@ -79,6 +79,8 @@ export function mapShop(
     rating,
     reviewCount,
     isVerified: Boolean(row.is_verified),
+    // Strictly `true`: stays hidden (instead of erroring) until migration 0006 runs.
+    acceptsSongRequests: row.accepts_song_requests === true,
     priceLevel: (Number(row.price_level) || 2) as 1 | 2 | 3,
     coverImage: row.cover_image || FALLBACK_COVER,
     gallery: row.gallery ?? [],
@@ -181,6 +183,7 @@ export interface MyBooking {
   serviceNames: string[];
   totalDuration: number;
   barberName: string | null;
+  songRequest: string | null;
   reviewed: boolean;
   shop: Shop;
 }
@@ -200,6 +203,7 @@ function toMyBooking(b: BookingRow, shop: Shop, reviewed: boolean): MyBooking {
     barberName: b.barber_id
       ? shop.barbers.find((x) => x.id === b.barber_id)?.name ?? null
       : null,
+    songRequest: b.song_request ?? null,
     reviewed,
     shop,
   };

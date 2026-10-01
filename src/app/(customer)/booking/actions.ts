@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { displayName, userPhone } from "@/lib/auth";
+import { cleanSongRequest } from "@/lib/utils";
 
 export interface CreateBookingInput {
   shopId: string;
@@ -10,6 +11,7 @@ export interface CreateBookingInput {
   barberId: string | null; // null = any
   mode: "queue" | "slot";
   slotTime?: string | null;
+  songRequest?: string | null;
 }
 
 export type CreateBookingResult =
@@ -41,7 +43,7 @@ export async function createBooking(
 
   const { data: shop } = await supabase
     .from("shops")
-    .select("id, open_now")
+    .select("*")
     .eq("id", input.shopId)
     .eq("is_published", true)
     .maybeSingle();
@@ -81,6 +83,10 @@ export async function createBooking(
     0
   );
 
+  // Only store a song if the shop accepts requests (and only send the column
+  // when there is one, so bookings keep working before migration 0006).
+  const song = shop.accepts_song_requests === true ? cleanSongRequest(input.songRequest) : null;
+
   const { data: booking, error } = await supabase
     .from("bookings")
     .insert({
@@ -94,6 +100,7 @@ export async function createBooking(
       slot_time: input.mode === "slot" ? input.slotTime : null,
       status: input.mode === "queue" ? "in_queue" : "booked",
       total_amount: total,
+      ...(song ? { song_request: song } : {}),
     })
     .select("id")
     .single();
@@ -231,4 +238,28 @@ export async function updateProfileName(
 
   revalidatePath("/", "layout");
   return { error: null, ok: true };
+}
+
+/** Change (or remove) the song request on an active booking. */
+export async function updateSongRequest(
+  bookingId: string,
+  song: string
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Please sign in." };
+
+  const { data, error } = await supabase
+    .from("bookings")
+    .update({ song_request: cleanSongRequest(song) })
+    .eq("id", bookingId)
+    .eq("customer_id", user.id)
+    .in("status", ["booked", "in_queue"])
+    .select("id");
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: "This booking can't be changed now." };
+  revalidatePath("/booking/confirm");
+  return { ok: true };
 }

@@ -7,9 +7,12 @@ import { UserPlus, LoaderCircle, X } from "lucide-react";
 export function WalkInForm({
   services,
   barbers,
+  songs = false,
 }: {
   services: { id: string; name: string; price: number }[];
   barbers: { id: string; name: string }[];
+  /** Show the song-request field (shop accepts requests). */
+  songs?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState<WalkInState, FormData>(addWalkIn, { error: null });
@@ -82,6 +85,15 @@ export function WalkInForm({
               </option>
             ))}
           </select>
+        )}
+
+        {songs && (
+          <input
+            name="song"
+            maxLength={100}
+            placeholder="🎵 Song request (optional)"
+            className="w-full rounded-xl border border-black/10 px-3 py-2.5 text-sm outline-none focus:border-gold"
+          />
         )}
 
         {state.error && <p className="text-sm text-rose-600">{state.error}</p>}
