@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { displayName, userPhone } from "@/lib/auth";
 import { cleanSongRequest } from "@/lib/utils";
+import { isShopLive } from "@/lib/shops";
+import type { ShopRow } from "@/lib/supabase/database.types";
 
 export interface CreateBookingInput {
   shopId: string;
@@ -46,8 +48,8 @@ export async function createBooking(
     .select("*")
     .eq("id", input.shopId)
     .eq("is_published", true)
-    .maybeSingle();
-  if (!shop) return { ok: false, error: "This shop is not available right now." };
+    .maybeSingle<ShopRow>();
+  if (!shop || !isShopLive(shop)) return { ok: false, error: "This shop is not available right now." };
   if (input.mode === "queue" && !shop.open_now) {
     return { ok: false, error: "The shop is closed — book a slot instead." };
   }

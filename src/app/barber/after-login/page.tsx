@@ -29,15 +29,17 @@ export default async function AfterLoginPage() {
       .update({ role: "barber" })
       .eq("id", user.id);
 
-    // Already has a shop? → dashboard, else → onboarding.
+    // Approved shop → dashboard; otherwise continue the onboarding wizard.
     const { data: shop } = await supabase
       .from("shops")
-      .select("id")
+      .select("*")
       .eq("owner_id", user.id)
       .limit(1)
       .maybeSingle();
 
-    if (shop) destination = "/barber/dashboard";
+    if (shop && (shop.onboarding_status === undefined || shop.onboarding_status === "approved")) {
+      destination = "/barber/dashboard";
+    }
 
     revalidatePath("/barber", "layout");
   } catch (err) {

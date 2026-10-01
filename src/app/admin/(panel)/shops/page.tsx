@@ -7,8 +7,18 @@ import { formatINR } from "@/lib/utils";
 import { PageHeader, FilterTabs, SearchBox, Empty } from "@/components/admin/ui";
 import { adminSetVerified, adminSetSuspended, adminSetPublished } from "../../actions";
 import { BadgeCheck, Ban, Eye, EyeOff, ExternalLink, MapPin, Phone } from "lucide-react";
+import { ShopReviewPanel } from "@/components/admin/ShopReviewPanel";
+import { isShopLive } from "@/lib/shops";
+import { isActive, daysLeft } from "@/lib/plans";
 
-type Filter = "all" | "pending" | "verified" | "draft" | "suspended";
+const ONB: Record<string, { label: string; cls: string }> = {
+  draft: { label: "Onboarding", cls: "bg-black/5 text-ink/60" },
+  submitted: { label: "⏳ Review", cls: "bg-amber-50 text-amber-700" },
+  approved: { label: "Approved", cls: "bg-emerald-50 text-emerald-700" },
+  rejected: { label: "Rejected", cls: "bg-rose-50 text-rose-700" },
+};
+
+type Filter = "all" | "pending" | "verified" | "unpaid" | "draft" | "suspended";
 
 export default async function AdminShopsPage({
   searchParams,
@@ -33,11 +43,17 @@ export default async function AdminShopsPage({
   const services = (serviceData as { shop_id: string; is_active: boolean }[]) ?? [];
   const bookings = (bookingData as { shop_id: string; status: string; total_amount: number }[]) ?? [];
 
+  const partner = all.some((s) => s.onboarding_status !== undefined);
   const is = (s: ShopRow, f: Filter) =>
     f === "all" ||
-    (f === "pending" && s.is_published && !s.is_verified && !s.is_suspended) ||
+    (f === "pending" &&
+      (partner ? s.onboarding_status === "submitted" : s.is_published && !s.is_verified) &&
+      !s.is_suspended) ||
     (f === "verified" && s.is_verified && !s.is_suspended) ||
-    (f === "draft" && !s.is_published && !s.is_suspended) ||
+    (f === "unpaid" && s.onboarding_status === "approved" && !isActive(s.subscription_until)) ||
+    (f === "draft" &&
+      (partner ? s.onboarding_status === "draft" || s.onboarding_status === "rejected" : !s.is_published) &&
+      !s.is_suspended) ||
     (f === "suspended" && s.is_suspended);
 
   const term = q.trim().toLowerCase();
@@ -49,9 +65,10 @@ export default async function AdminShopsPage({
 
   const tabs: { value: Filter; label: string }[] = [
     { value: "all", label: "All" },
-    { value: "pending", label: "Needs verification" },
+    { value: "pending", label: "Pending review" },
     { value: "verified", label: "Verified" },
-    { value: "draft", label: "Drafts" },
+    { value: "unpaid", label: "Plan expired / unpaid" },
+    { value: "draft", label: "Onboarding / rejected" },
     { value: "suspended", label: "Suspended" },
   ];
 
@@ -79,7 +96,7 @@ export default async function AdminShopsPage({
             const bk = bookings.filter((x) => x.shop_id === s.id);
             const gmv = bk.filter((x) => x.status === "done").reduce((a, x) => a + x.total_amount, 0);
             return (
-              <div key={s.id} className="card flex flex-col gap-4 p-4 lg:flex-row lg:items-center">
+              <div key={s.id} className="card flex flex-col flex-wrap gap-4 p-4 lg:flex-row lg:items-center">
                 <div className="flex flex-1 items-center gap-4">
                   <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-black/5">
                     {s.cover_image && <Image src={s.cover_image} alt={s.name} fill className="object-cover" />}
@@ -90,11 +107,20 @@ export default async function AdminShopsPage({
                       {s.is_verified && <BadgeCheck size={16} className="text-gold-dark" />}
                       {s.is_suspended ? (
                         <span className="badge bg-rose-50 text-rose-700">Suspended</span>
-                      ) : s.is_published ? (
+                      ) : isShopLive(s) ? (
                         <span className="badge bg-emerald-50 text-emerald-700">Live</span>
                       ) : (
-                        <span className="badge bg-black/5 text-ink/60">Draft</span>
+                        <span className="badge bg-black/5 text-ink/60">Not live</span>
                       )}
+                      {s.onboarding_status && (
+                        <span className={`badge ${ONB[s.onboarding_status].cls}`}>{ONB[s.onboarding_status].label}</span>
+                      )}
+                      {s.onboarding_status !== undefined && (
+                        <span className={`badge ${isActive(s.subscription_until) ? "bg-gold/15 text-gold-dark" : "bg-rose-50 text-rose-700"}`}>
+                          {isActive(s.subscription_until) ? `Plan · ${daysLeft(s.subscription_until)}d` : "No plan"}
+                        </span>
+                      )}
+                      {isActive(s.boost_until) && <span className="badge bg-coral/15 text-coral">🚀 Boost · {daysLeft(s.boost_until)}d</span>}
                     </p>
                     <p className="flex flex-wrap items-center gap-x-3 text-xs text-ink/50">
                       <span className="flex items-center gap-1"><MapPin size={11} /> {[s.area, s.city].filter(Boolean).join(", ") || "—"}</span>
@@ -122,12 +148,21 @@ export default async function AdminShopsPage({
                   >
                     <Ban size={14} /> {s.is_suspended ? "Reinstate" : "Suspend"}
                   </ActionButton>
-                  {s.is_published && !s.is_suspended && (
+                  {isShopLive(s) && (
                     <Link href={`/shop/${s.slug}`} target="_blank" className="btn-outline px-3 py-2 text-xs">
                       <ExternalLink size={14} />
                     </Link>
                   )}
                 </div>
+                <ShopReviewPanel
+                  shopId={s.id}
+                  status={s.onboarding_status}
+                  ownerName={s.owner_name}
+                  pan={s.pan_number}
+                  gstin={s.gstin}
+                  pincode={s.pincode}
+                  kycPath={s.kyc_doc_path}
+                />
               </div>
             );
           })}

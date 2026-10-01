@@ -81,6 +81,7 @@ export function mapShop(
     isVerified: Boolean(row.is_verified),
     // Strictly `true`: stays hidden (instead of erroring) until migration 0006 runs.
     acceptsSongRequests: row.accepts_song_requests === true,
+    isBoosted: Boolean(row.boost_until && new Date(row.boost_until).getTime() > Date.now()),
     priceLevel: (Number(row.price_level) || 2) as 1 | 2 | 3,
     coverImage: row.cover_image || FALLBACK_COVER,
     gallery: row.gallery ?? [],
@@ -122,7 +123,23 @@ async function hydrate(supabase: Db, rows: ShopRow[]): Promise<Shop[]> {
   );
 }
 
-/** Published (and not suspended) shops for the discovery page. */
+/**
+ * Customer-visible = published, not suspended, approved and subscription paid.
+ * RLS enforces the same rule for everyone except the owner (who can always
+ * read their own shop), so we re-check here. Before migration 0007 the
+ * partner columns don't exist yet → fall back to the old published rule.
+ */
+export function isShopLive(row: ShopRow): boolean {
+  if (!row.is_published || row.is_suspended) return false;
+  if (row.onboarding_status === undefined) return true;
+  return (
+    row.onboarding_status === "approved" &&
+    Boolean(row.subscription_until) &&
+    new Date(row.subscription_until!).getTime() > Date.now()
+  );
+}
+
+/** Live shops for the discovery page. */
 export async function getPublishedShops(): Promise<Shop[]> {
   try {
     const supabase = await createClient();
@@ -131,8 +148,9 @@ export async function getPublishedShops(): Promise<Shop[]> {
       .select("*")
       .eq("is_published", true)
       .order("created_at", { ascending: false });
+    const rows = ((data as ShopRow[]) ?? []).filter(isShopLive);
     // Shops that never added a service can't be booked — hide them.
-    const shops = await hydrate(supabase, (data as ShopRow[]) ?? []);
+    const shops = await hydrate(supabase, rows);
     return shops.filter((s) => s.services.length > 0);
   } catch {
     return [];
@@ -147,7 +165,7 @@ export async function getShopBySlug(slug: string): Promise<Shop | null> {
     .eq("slug", slug)
     .eq("is_published", true)
     .maybeSingle<ShopRow>();
-  if (!data) return null;
+  if (!data || !isShopLive(data)) return null;
   const [shop] = await hydrate(supabase, [data]);
   return shop ?? null;
 }

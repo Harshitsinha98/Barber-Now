@@ -15,10 +15,15 @@ import { MapPin, Navigation, BadgeCheck, Star, ArrowUpRight, Music } from "lucid
 export function ShopCard({
   shop,
   distanceKm,
+  sponsored = false,
+  onOpen,
 }: {
   shop: Shop;
   /** Live distance from the user's device; hidden when unknown. */
   distanceKm?: number | null;
+  /** Shown in a paid slot → must be labelled. */
+  sponsored?: boolean;
+  onOpen?: () => void;
 }) {
   const fromPrice = shop.services.length ? Math.min(...shop.services.map(effectivePrice)) : null;
   const maxOff = Math.max(0, ...shop.services.map((s) => s.discountPercent ?? 0));
@@ -27,7 +32,10 @@ export function ShopCard({
   return (
     <Link
       href={`/shop/${shop.slug}`}
-      className="group relative flex flex-col overflow-hidden rounded-3xl border border-black/5 bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-premium"
+      onClick={onOpen}
+      className={`group relative flex flex-col overflow-hidden rounded-3xl bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-premium ${
+        sponsored ? "ring-2 ring-gold/60" : "border border-black/5"
+      }`}
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden">
         <Image
@@ -50,11 +58,18 @@ export function ShopCard({
               Closed now
             </span>
           )}
-          {maxOff > 0 && (
-            <span className="rounded-full bg-gradient-to-r from-gold to-coral px-2.5 py-1 text-xs font-bold text-ink shadow">
-              Up to {maxOff}% off
-            </span>
-          )}
+          <div className="flex flex-col items-end gap-1.5">
+            {sponsored && (
+              <span className="rounded-full bg-ink/85 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-gold backdrop-blur">
+                Sponsored
+              </span>
+            )}
+            {maxOff > 0 && (
+              <span className="rounded-full bg-gradient-to-r from-gold to-coral px-2.5 py-1 text-xs font-bold text-ink shadow">
+                Up to {maxOff}% off
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between gap-2 text-cream">

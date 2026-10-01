@@ -48,8 +48,46 @@ export interface ShopRow {
   is_suspended: boolean;
   /** Undefined until migration 0006 is applied. */
   accepts_song_requests?: boolean;
+  // ── Partner program (migration 0007) ──
+  onboarding_status?: "draft" | "submitted" | "approved" | "rejected";
+  owner_name?: string | null;
+  pincode?: string | null;
+  pan_number?: string | null;
+  gstin?: string | null;
+  kyc_doc_path?: string | null;
+  rejection_reason?: string | null;
+  submitted_at?: string | null;
+  approved_at?: string | null;
+  subscription_until?: string | null;
+  boost_until?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface PaymentRow {
+  id: string;
+  shop_id: string;
+  kind: "subscription" | "boost";
+  plan_code: string;
+  amount: number;
+  days: number;
+  status: "created" | "paid" | "failed";
+  method: "razorpay" | "manual";
+  razorpay_order_id: string | null;
+  razorpay_payment_id: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  note: string | null;
+  created_at: string;
+  paid_at: string | null;
+}
+
+export interface ShopStatsRow {
+  shop_id: string;
+  day: string;
+  impressions: number;
+  clicks: number;
+  bookings: number;
 }
 
 export interface ServiceRow {

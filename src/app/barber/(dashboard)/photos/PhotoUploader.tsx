@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { setCover, addToGallery } from "./actions";
 import { Upload, LoaderCircle, ImagePlus } from "lucide-react";
@@ -14,6 +15,7 @@ export function PhotoUploader({
   target: "cover" | "gallery";
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -55,6 +57,7 @@ export function PhotoUploader({
       start(async () => {
         if (target === "cover") await setCover(fd);
         else await addToGallery(fd);
+        router.refresh(); // also used inside the onboarding wizard
       });
     } catch (err) {
       setError((err as Error).message);
