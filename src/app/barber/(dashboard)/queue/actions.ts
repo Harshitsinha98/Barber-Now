@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getOwnedShop } from "@/lib/barber";
 import type { BookingStatus } from "@/lib/supabase/database.types";
+import { cleanSongRequest } from "@/lib/utils";
 
 // Allowed transitions — stops e.g. a finished visit being re-opened.
 const FROM: Record<string, BookingStatus[]> = {
@@ -68,6 +69,8 @@ export async function addWalkIn(_prev: WalkInState, formData: FormData): Promise
     0
   );
 
+  const song = ctx.shop.accepts_song_requests === true ? cleanSongRequest(formData.get("song")) : null;
+
   const { error } = await ctx.supabase.from("bookings").insert({
     shop_id: ctx.shop.id,
     customer_id: null,
@@ -78,6 +81,7 @@ export async function addWalkIn(_prev: WalkInState, formData: FormData): Promise
     mode: "queue",
     status: "in_queue",
     total_amount: total,
+    ...(song ? { song_request: song } : {}),
   });
   if (error) return { error: error.message };
   refresh();

@@ -46,6 +46,8 @@ export interface ShopRow {
   queue_status: QueueStatus;
   is_verified: boolean;
   is_suspended: boolean;
+  /** Undefined until migration 0006 is applied. */
+  accepts_song_requests?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -88,6 +90,7 @@ export interface BookingRow {
   total_amount: number;
   customer_name: string | null;
   customer_phone: string | null;
+  song_request?: string | null;
   booking_date: string;
   created_at: string;
   updated_at: string;

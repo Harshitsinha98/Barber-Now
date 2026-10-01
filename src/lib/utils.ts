@@ -156,3 +156,21 @@ export function formatDistance(km: number): string {
   if (km < 10) return `${km.toFixed(1)} km`;
   return `${Math.round(km)} km`;
 }
+
+/**
+ * Clean a free-text song request: strip control chars / angle brackets,
+ * collapse whitespace, cap at 100 chars. Returns null when empty.
+ */
+export function cleanSongRequest(raw: unknown): string | null {
+  const s = String(raw ?? "")
+    .replace(/\s+/g, " ") // newlines/tabs → single space first
+    .replace(/[\u0000-\u001f\u007f<>]/g, "")
+    .trim()
+    .slice(0, 100);
+  return s || null;
+}
+
+/** YouTube search link for a song request (barber taps to play). */
+export function youtubeSearchUrl(song: string): string {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(song)}`;
+}

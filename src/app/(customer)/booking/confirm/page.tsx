@@ -4,7 +4,7 @@ import { getBookingDetail } from "@/lib/shops";
 import { getSessionUser } from "@/lib/auth";
 import { formatINR, BOOKING_STATUS_LABEL } from "@/lib/utils";
 import { QueueTracker } from "@/components/QueueTracker";
-import { CancelBookingButton, ReviewForm } from "@/components/BookingActions";
+import { CancelBookingButton, ReviewForm, SongRequestEditor } from "@/components/BookingActions";
 import { getQueueStatus } from "../actions";
 import {
   CheckCircle2,
@@ -79,6 +79,13 @@ export default async function ConfirmPage({
                   : "Virtual queue (walk-in)"
               }
             />
+            {(shop.acceptsSongRequests || booking.songRequest) && (
+              <SongRequestEditor
+                bookingId={booking.id}
+                initial={booking.songRequest}
+                editable={cancellable && shop.acceptsSongRequests}
+              />
+            )}
           </div>
 
           <div className="mt-4 border-t border-black/10 pt-4">
