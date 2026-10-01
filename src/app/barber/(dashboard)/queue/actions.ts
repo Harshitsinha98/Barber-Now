@@ -1,77 +1,85 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { getOwnedShop } from "@/lib/barber";
+import type { BookingStatus } from "@/lib/supabase/database.types";
 
-type BookingStatus =
-  | "booked"
-  | "in_queue"
-  | "in_service"
-  | "done"
-  | "cancelled"
-  | "no_show";
+// Allowed transitions — stops e.g. a finished visit being re-opened.
+const FROM: Record<string, BookingStatus[]> = {
+  in_service: ["booked", "in_queue"],
+  done: ["booked", "in_queue", "in_service"],
+  no_show: ["booked", "in_queue"],
+  cancelled: ["booked", "in_queue", "in_service"],
+};
 
-async function ownedShop() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data } = await supabase
-    .from("shops")
-    .select("id, queue_avg_minutes")
-    .eq("owner_id", user.id)
-    .limit(1)
-    .maybeSingle();
-  if (!data) return null;
-  return { shopId: data.id as string, supabase };
+function refresh() {
+  revalidatePath("/barber", "layout");
+  revalidatePath("/");
 }
 
-/**
- * Recompute the shop's live queue snapshot (people ahead + status) from the
- * count of active bookings. Called after every queue mutation so the customer
- * side stays accurate.
- */
-async function refreshQueueSnapshot(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  shopId: string
-) {
-  const { count } = await supabase
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("shop_id", shopId)
-    .in("status", ["booked", "in_queue", "in_service"]);
-
-  const ahead = count ?? 0;
-  const status = ahead === 0 ? "quiet" : ahead <= 3 ? "moderate" : "busy";
-  await supabase
-    .from("shops")
-    .update({ queue_people_ahead: ahead, queue_status: status })
-    .eq("id", shopId);
-}
-
-async function updateStatus(bookingId: string, status: BookingStatus) {
-  const ctx = await ownedShop();
-  if (!ctx || !bookingId) return;
+async function setStatus(formData: FormData, status: BookingStatus) {
+  const ctx = await getOwnedShop();
+  const id = String(formData.get("id") ?? "");
+  if (!ctx || !id) return;
+  // Queue snapshot is recomputed by the bookings trigger.
   await ctx.supabase
     .from("bookings")
     .update({ status })
-    .eq("id", bookingId)
-    .eq("shop_id", ctx.shopId);
-  await refreshQueueSnapshot(ctx.supabase, ctx.shopId);
-  revalidatePath("/barber/queue");
-  revalidatePath("/barber/dashboard");
+    .eq("id", id)
+    .eq("shop_id", ctx.shop.id)
+    .in("status", FROM[status]);
+  refresh();
 }
 
-export async function startService(formData: FormData) {
-  await updateStatus(String(formData.get("id") ?? ""), "in_service");
+export async function startService(fd: FormData) {
+  await setStatus(fd, "in_service");
 }
-export async function markDone(formData: FormData) {
-  await updateStatus(String(formData.get("id") ?? ""), "done");
+export async function markDone(fd: FormData) {
+  await setStatus(fd, "done");
 }
-export async function skipBooking(formData: FormData) {
-  await updateStatus(String(formData.get("id") ?? ""), "no_show");
+export async function skipBooking(fd: FormData) {
+  await setStatus(fd, "no_show");
 }
-export async function cancelBooking(formData: FormData) {
-  await updateStatus(String(formData.get("id") ?? ""), "cancelled");
+export async function cancelBooking(fd: FormData) {
+  await setStatus(fd, "cancelled");
+}
+
+export type WalkInState = { error: string | null; ok?: boolean };
+
+/** Barber adds a customer who walked in without the app. */
+export async function addWalkIn(_prev: WalkInState, formData: FormData): Promise<WalkInState> {
+  const ctx = await getOwnedShop();
+  if (!ctx) return { error: "Not authorised." };
+
+  const name = String(formData.get("name") ?? "").trim().slice(0, 60) || "Walk-in";
+  const phone = String(formData.get("phone") ?? "").replace(/\D/g, "").slice(-10);
+  const serviceIds = formData.getAll("services").map(String).filter(Boolean);
+  const barberId = String(formData.get("barber") ?? "") || null;
+  if (serviceIds.length === 0) return { error: "Pick at least one service." };
+
+  const { data: services } = await ctx.supabase
+    .from("services")
+    .select("id, price, discount_percent")
+    .eq("shop_id", ctx.shop.id)
+    .in("id", serviceIds);
+  const total = (services ?? []).reduce(
+    (sum, s) =>
+      sum + (s.discount_percent ? Math.round(s.price * (1 - s.discount_percent / 100)) : s.price),
+    0
+  );
+
+  const { error } = await ctx.supabase.from("bookings").insert({
+    shop_id: ctx.shop.id,
+    customer_id: null,
+    customer_name: name,
+    customer_phone: phone.length === 10 ? phone : null,
+    barber_id: barberId,
+    service_ids: serviceIds,
+    mode: "queue",
+    status: "in_queue",
+    total_amount: total,
+  });
+  if (error) return { error: error.message };
+  refresh();
+  return { error: null, ok: true };
 }

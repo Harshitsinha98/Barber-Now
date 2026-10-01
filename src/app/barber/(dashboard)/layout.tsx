@@ -1,31 +1,31 @@
-import { redirect } from "next/navigation";
 import { BarberNav } from "@/components/barber/BarberNav";
-import { getMyShop } from "@/lib/supabase/queries";
-import { createClient } from "@/lib/supabase/server";
+import { requireBarberShop } from "@/lib/barber";
 
 /**
- * Shell for the authenticated barber dashboard pages (Overview, Services,
- * Photos, Queue). The login/after-login pages sit OUTSIDE this group so they
- * render full-screen without the sidebar. Middleware already redirects
- * unauthenticated users, but we double-check here too.
+ * Shell for the authenticated barber pages. Login / after-login / onboarding
+ * sit outside this group so they render full-screen.
  */
-export default async function BarberDashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/barber/login");
-
-  const shop = await getMyShop();
+export default async function BarberDashboardLayout({ children }: { children: React.ReactNode }) {
+  const { shop } = await requireBarberShop();
+  const isLive = shop.is_published && !shop.is_suspended;
 
   return (
     <div className="flex min-h-screen flex-col bg-cream md:flex-row">
-      <BarberNav shopName={shop?.name} />
-      <div className="flex-1 overflow-x-hidden">{children}</div>
+      <BarberNav
+        shopName={shop.name}
+        shopSlug={shop.slug}
+        isLive={isLive}
+        queueCount={shop.queue_people_ahead}
+      />
+      <div className="flex-1 overflow-x-hidden">
+        {shop.is_suspended && (
+          <div className="bg-rose-600 px-5 py-2.5 text-center text-sm font-medium text-white">
+            Your shop has been suspended by BarberNow and is hidden from customers.
+            Contact support@barbernow.in.
+          </div>
+        )}
+        {children}
+      </div>
     </div>
   );
 }

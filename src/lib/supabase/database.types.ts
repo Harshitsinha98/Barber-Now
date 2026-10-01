@@ -44,6 +44,8 @@ export interface ShopRow {
   queue_people_ahead: number;
   queue_avg_minutes: number;
   queue_status: QueueStatus;
+  is_verified: boolean;
+  is_suspended: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -84,13 +86,19 @@ export interface BookingRow {
   status: BookingStatus;
   queue_position: number | null;
   total_amount: number;
+  customer_name: string | null;
+  customer_phone: string | null;
+  booking_date: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface ReviewRow {
   id: string;
   shop_id: string;
   customer_id: string | null;
+  booking_id: string | null;
+  reviewer_name: string | null;
   rating: number;
   comment: string | null;
   created_at: string;

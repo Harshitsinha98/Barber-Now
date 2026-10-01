@@ -1,6 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 
 export function Toggle({
@@ -10,34 +11,47 @@ export function Toggle({
   labelOff = "Off",
 }: {
   checked: boolean;
-  onToggle: (next: boolean) => Promise<void> | void;
+  onToggle: (next: boolean) => Promise<{ ok: boolean; error?: string } | void>;
   labelOn?: string;
   labelOff?: string;
 }) {
+  const router = useRouter();
   const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() => start(() => void onToggle(!checked))}
-      className="flex items-center gap-2"
-    >
-      <span
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-          checked ? "bg-emerald-500" : "bg-black/20"
-        }`}
+    <div className="flex flex-col items-end">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            setError(null);
+            const res = await onToggle(!checked);
+            if (res && !res.ok) setError(res.error ?? "Something went wrong.");
+            router.refresh();
+          })
+        }
+        className="flex items-center gap-2"
+        aria-pressed={checked}
       >
         <span
-          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
-            checked ? "translate-x-5" : "translate-x-0.5"
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+            checked ? "bg-emerald-500" : "bg-black/20"
           }`}
-        />
-      </span>
-      <span className="flex items-center gap-1 text-sm font-medium text-ink">
-        {pending && <LoaderCircle size={13} className="animate-spin" />}
-        {checked ? labelOn : labelOff}
-      </span>
-    </button>
+        >
+          <span
+            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+              checked ? "translate-x-5" : "translate-x-0.5"
+            }`}
+          />
+        </span>
+        <span className="flex items-center gap-1 text-sm font-medium text-ink">
+          {pending && <LoaderCircle size={13} className="animate-spin" />}
+          {checked ? labelOn : labelOff}
+        </span>
+      </button>
+      {error && <span className="mt-1 max-w-[220px] text-right text-xs text-rose-600">{error}</span>}
+    </div>
   );
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Scissors, Instagram, Twitter, Facebook } from "lucide-react";
+import { Scissors } from "lucide-react";
 
 export function Footer() {
   return (
@@ -15,19 +15,9 @@ export function Footer() {
             </span>
           </div>
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-cream/60">
-            Skip the wait. Discover top barbershops near you, check live queues,
-            and book your slot in seconds. Made for India. 🇮🇳
+            Skip the wait. Discover barbershops near you, check live queues and
+            book your slot in seconds. Made for India. 🇮🇳
           </p>
-          <div className="mt-5 flex gap-3">
-            {[Instagram, Twitter, Facebook].map((Icon, i) => (
-              <span
-                key={i}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-cream/70 transition-colors hover:bg-gold hover:text-ink"
-              >
-                <Icon size={16} />
-              </span>
-            ))}
-          </div>
         </div>
 
         <FooterCol
@@ -36,22 +26,21 @@ export function Footer() {
             { label: "Discover shops", href: "/#discover" },
             { label: "How it works", href: "/#how" },
             { label: "My bookings", href: "/bookings" },
+            { label: "My account", href: "/account" },
           ]}
         />
         <FooterCol
           title="Barbers"
           links={[
-            { label: "List your shop", href: "#" },
-            { label: "Partner app", href: "#" },
-            { label: "Pricing", href: "#" },
+            { label: "List your shop — free", href: "/barber/login" },
+            { label: "Partner login", href: "/barber/login" },
           ]}
         />
         <FooterCol
-          title="Company"
+          title="Help"
           links={[
-            { label: "About us", href: "#" },
-            { label: "Contact", href: "#" },
-            { label: "Privacy", href: "#" },
+            { label: "Sign in", href: "/login" },
+            { label: "Contact: support@barbernow.in", href: "mailto:support@barbernow.in" },
           ]}
         />
       </div>
@@ -65,25 +54,14 @@ export function Footer() {
   );
 }
 
-function FooterCol({
-  title,
-  links,
-}: {
-  title: string;
-  links: { label: string; href: string }[];
-}) {
+function FooterCol({ title, links }: { title: string; links: { label: string; href: string }[] }) {
   return (
     <div>
-      <h4 className="text-sm font-semibold uppercase tracking-wider text-cream">
-        {title}
-      </h4>
+      <h4 className="text-sm font-semibold uppercase tracking-wider text-cream">{title}</h4>
       <ul className="mt-4 space-y-3">
         {links.map((l) => (
           <li key={l.label}>
-            <Link
-              href={l.href}
-              className="text-sm text-cream/60 transition-colors hover:text-gold"
-            >
+            <Link href={l.href} className="text-sm text-cream/60 transition-colors hover:text-gold">
               {l.label}
             </Link>
           </li>

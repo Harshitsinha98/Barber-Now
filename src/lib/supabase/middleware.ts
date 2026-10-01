@@ -46,16 +46,15 @@ export async function updateSession(request: NextRequest) {
 
     const path = request.nextUrl.pathname;
 
-    // Protect the barber dashboard (but not its auth pages).
-    const isProtected =
-      path.startsWith("/barber") &&
-      !path.startsWith("/barber/login") &&
-      !path.startsWith("/barber/signup");
+    // Protect the barber + admin areas (but not their login pages).
+    // Admin *authorisation* (phone allow-list) is checked in the admin layout.
+    const area = path.startsWith("/barber") ? "barber" : path.startsWith("/admin") ? "admin" : null;
+    const isLogin = path === `/${area}/login`;
 
-    if (isProtected && !user) {
+    if (area && !isLogin && !user) {
       const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = "/barber/login";
-      loginUrl.searchParams.set("next", path);
+      loginUrl.pathname = `/${area}/login`;
+      loginUrl.search = "";
       return NextResponse.redirect(loginUrl);
     }
 

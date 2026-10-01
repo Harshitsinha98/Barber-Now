@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Shop } from "@/lib/types";
 import { ShopCard } from "./ShopCard";
@@ -16,6 +17,16 @@ import {
 
 type SortKey = "nearest" | "rating" | "wait";
 
+const CATEGORIES = [
+  { value: "all", label: "All services" },
+  { value: "hair", label: "✂️ Haircut" },
+  { value: "beard", label: "🧔 Beard" },
+  { value: "shave", label: "🪒 Shave" },
+  { value: "spa", label: "💆 Spa & facial" },
+  { value: "combo", label: "⭐ Combos" },
+  { value: "kids", label: "🧒 Kids" },
+];
+
 export function DiscoverSection({ shops }: { shops: Shop[] }) {
   const { coords, status, error, locate } = useGeolocation();
 
@@ -24,6 +35,8 @@ export function DiscoverSection({ shops }: { shops: Shop[] }) {
   const [sort, setSort] = useState<SortKey>("nearest");
   const [openOnly, setOpenOnly] = useState(false);
   const [radiusKm, setRadiusKm] = useState<number>(10);
+  const [category, setCategory] = useState<string>("all");
+  const [offersOnly, setOffersOnly] = useState(false);
   const [autoTried, setAutoTried] = useState(false);
 
   // Ask for the device location automatically on first mount.
@@ -36,13 +49,15 @@ export function DiscoverSection({ shops }: { shops: Shop[] }) {
 
   const usingLocation = status === "granted" && coords != null;
 
-  // Attach a live distance (from device) to each shop when we have coords.
+  // Live distance from the device; null when unknown (no device location, or
+  // the barber never set the shop's location).
   const shopsWithDistance = useMemo(() => {
     return shops.map((s) => ({
       shop: s,
-      distance: usingLocation
-        ? haversineKm(coords!, { lat: s.lat, lng: s.lng })
-        : s.distanceKm,
+      distance:
+        usingLocation && (s.lat || s.lng)
+          ? haversineKm(coords!, { lat: s.lat, lng: s.lng })
+          : null,
     }));
   }, [shops, coords, usingLocation]);
 
@@ -60,20 +75,54 @@ export function DiscoverSection({ shops }: { shops: Shop[] }) {
         shop.city.toLowerCase().includes(query.toLowerCase());
       const matchesCity = city === "All" || shop.city === city;
       const matchesOpen = !openOnly || shop.openNow;
-      // Radius only applies when we actually have the user's location
-      const matchesRadius = !usingLocation || distance <= radiusKm;
-      return matchesQuery && matchesCity && matchesOpen && matchesRadius;
+      const matchesCategory =
+        category === "all" || shop.services.some((s) => s.category === category);
+      const matchesOffers = !offersOnly || shop.services.some((s) => s.discountPercent);
+      // Radius only applies to shops whose location we know.
+      const matchesRadius = distance == null || distance <= radiusKm;
+      return (
+        matchesQuery &&
+        matchesCity &&
+        matchesOpen &&
+        matchesCategory &&
+        matchesOffers &&
+        matchesRadius
+      );
     });
 
+    const far = Number.MAX_SAFE_INTEGER;
     list = [...list].sort((a, b) => {
-      if (sort === "nearest") return a.distance - b.distance;
+      if (sort === "nearest") return (a.distance ?? far) - (b.distance ?? far);
       if (sort === "rating") return b.shop.rating - a.shop.rating;
       return estimatedWaitMinutes(a.shop) - estimatedWaitMinutes(b.shop);
     });
     return list;
-  }, [shopsWithDistance, query, city, sort, openOnly, radiusKm, usingLocation]);
+  }, [shopsWithDistance, query, city, sort, openOnly, radiusKm, category, offersOnly]);
 
-  const nearest = usingLocation && filtered.length > 0 ? filtered[0] : null;
+  const nearest =
+    usingLocation && filtered.length > 0 && filtered[0].distance != null ? filtered[0] : null;
+
+  if (shops.length === 0) {
+    return (
+      <section id="discover" className="container-app scroll-mt-20 py-16">
+        <div className="card mx-auto max-w-2xl p-10 text-center">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gold/15 text-gold-dark">
+            <MapPin size={24} />
+          </span>
+          <h2 className="mt-4 font-display text-2xl font-bold text-ink">
+            Partner shops are coming soon
+          </h2>
+          <p className="mt-2 text-ink/60">
+            We&apos;re onboarding barbershops in your area. Own a shop? List it
+            for free and start taking online bookings today.
+          </p>
+          <Link href="/barber/login" className="btn-gold mt-6">
+            List your shop
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="discover" className="container-app scroll-mt-20 py-16">
@@ -95,7 +144,7 @@ export function DiscoverSection({ shops }: { shops: Shop[] }) {
           status={status}
           error={error}
           nearestLabel={
-            nearest
+            nearest && nearest.distance != null
               ? `${nearest.shop.name} · ${formatDistance(nearest.distance)}`
               : null
           }
@@ -150,6 +199,15 @@ export function DiscoverSection({ shops }: { shops: Shop[] }) {
             />
             Open now
           </label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={offersOnly}
+              onChange={(e) => setOffersOnly(e.target.checked)}
+              className="h-4 w-4 accent-gold"
+            />
+            Offers
+          </label>
 
           {/* Radius filter — only meaningful with a real location */}
           {usingLocation && (
@@ -169,7 +227,26 @@ export function DiscoverSection({ shops }: { shops: Shop[] }) {
             </label>
           )}
 
-          <span className="ml-auto">{filtered.length} shops found</span>
+          <span className="ml-auto">
+            {filtered.length} shop{filtered.length === 1 ? "" : "s"} found
+          </span>
+        </div>
+
+        {/* Service category chips */}
+        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c.value}
+              onClick={() => setCategory(c.value)}
+              className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${
+                category === c.value
+                  ? "border-ink bg-ink text-cream"
+                  : "border-black/10 bg-white text-ink/70 hover:border-black/30"
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
         </div>
       </div>
 

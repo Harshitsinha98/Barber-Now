@@ -11,6 +11,13 @@ export function Stars({
   showValue?: boolean;
   count?: number;
 }) {
+  if (!rating) {
+    return (
+      <span className="inline-flex items-center rounded-md bg-gold/15 px-1.5 py-0.5 text-xs font-bold text-gold-dark">
+        New
+      </span>
+    );
+  }
   return (
     <span className="inline-flex items-center gap-1">
       <span className="inline-flex items-center gap-0.5 rounded-md bg-emerald-600 px-1.5 py-0.5 text-white">

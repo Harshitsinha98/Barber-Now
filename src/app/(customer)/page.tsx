@@ -14,6 +14,8 @@ import {
 
 export default async function HomePage() {
   const shops = await getPublishedShops();
+  const openCount = shops.filter((s) => s.openNow).length;
+  const cityCount = new Set(shops.map((s) => s.city).filter(Boolean)).size;
 
   return (
     <>
@@ -53,9 +55,9 @@ export default async function HomePage() {
             </div>
 
             <div className="mt-10 flex flex-wrap gap-8">
-              <Stat value="500+" label="Partner shops" />
-              <Stat value="4.8★" label="Avg. rating" />
-              <Stat value="12 min" label="Avg. time saved" />
+              <Stat value={String(shops.length)} label="Partner shops live" />
+              <Stat value={String(openCount)} label="Open right now" />
+              <Stat value={cityCount > 0 ? String(cityCount) : "—"} label="Cities" />
             </div>
           </div>
         </div>
@@ -121,8 +123,8 @@ export default async function HomePage() {
               your services, photos, prices and offers yourself — it takes
               minutes.
             </p>
-            <Link href="#" className="btn-gold mt-6">
-              List your shop
+            <Link href="/barber/login" className="btn-gold mt-6">
+              List your shop — free
             </Link>
           </div>
         </div>

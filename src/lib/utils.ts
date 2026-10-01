@@ -62,20 +62,52 @@ export function queueStatusStyle(status: Shop["queue"]["status"]): {
   }
 }
 
-/** Generate booking slots for a given day from mock availability */
-export function generateSlots(seed = 0): BookingSlot[] {
-  const times = [
-    "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM",
-    "11:30 AM", "12:00 PM", "12:30 PM", "01:00 PM", "04:00 PM",
-    "04:30 PM", "05:00 PM", "05:30 PM", "06:00 PM", "06:30 PM",
-    "07:00 PM", "07:30 PM", "08:00 PM",
-  ];
-  return times.map((time, i) => ({
-    time,
-    // deterministic pseudo-availability so SSR matches client
-    available: (i * 7 + seed * 3) % 5 !== 0,
-  }));
+/** Minutes since midnight → "09:30 AM" */
+export function formatSlot(mins: number): string {
+  const h24 = Math.floor(mins / 60);
+  const m = mins % 60;
+  const ampm = h24 >= 12 ? "PM" : "AM";
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`;
 }
+
+/** Current time in India as minutes since midnight. */
+export function istNowMinutes(): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const h = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+  const m = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+  return (h % 24) * 60 + m;
+}
+
+/**
+ * Today's 30-minute slots between 9 AM and 9 PM. A slot is unavailable if it
+ * is already booked or starts within the next 15 minutes.
+ */
+export function buildSlots(taken: string[], nowMinutes: number | null): BookingSlot[] {
+  const takenSet = new Set(taken);
+  const slots: BookingSlot[] = [];
+  for (let t = 9 * 60; t < 21 * 60; t += 30) {
+    const time = formatSlot(t);
+    const past = nowMinutes != null && t < nowMinutes + 15;
+    slots.push({ time, available: !past && !takenSet.has(time) });
+  }
+  return slots;
+}
+
+/** "booked" → "Booked", "in_service" → "In chair" … */
+export const BOOKING_STATUS_LABEL: Record<string, { label: string; cls: string }> = {
+  booked: { label: "Confirmed", cls: "bg-blue-50 text-blue-700" },
+  in_queue: { label: "In queue", cls: "bg-amber-50 text-amber-700" },
+  in_service: { label: "In chair", cls: "bg-emerald-50 text-emerald-700" },
+  done: { label: "Completed", cls: "bg-emerald-50 text-emerald-700" },
+  cancelled: { label: "Cancelled", cls: "bg-rose-50 text-rose-700" },
+  no_show: { label: "No-show", cls: "bg-black/5 text-ink/60" },
+};
 
 /** Compute total price + duration for selected services */
 export function summarize(services: Service[]): {
