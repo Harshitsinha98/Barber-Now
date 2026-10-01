@@ -1,131 +1,139 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createShop, type OnboardState } from "./actions";
+import type { ShopRow } from "@/lib/supabase/database.types";
+import { saveShopDetails, type OnboardState } from "./actions";
 import { useGeolocation } from "@/lib/useGeolocation";
-import { Crosshair, LoaderCircle, Store, ArrowRight } from "lucide-react";
+import { Crosshair, LoaderCircle, ArrowRight, CheckCircle2 } from "lucide-react";
 
-const initial: OnboardState = { error: null };
+const input =
+  "w-full rounded-xl border border-black/10 bg-white px-3.5 py-3 text-sm outline-none transition focus:border-gold focus:ring-4 focus:ring-gold/15";
 
-export function OnboardingForm() {
-  const [state, formAction, pending] = useActionState(createShop, initial);
+const DAYS = ["none", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+/** Pull "9:00 AM" / "9:00 PM" back out of a stored "9:00 AM – 9:00 PM" string. */
+function parseHours(h?: string | null) {
+  const m = /^(.+?)\s*[–-]\s*(.+?)(?:\s*·\s*Closed\s+(\w+))?$/.exec(h ?? "");
+  return { opens: m?.[1] ?? "", closes: m?.[2] ?? "", off: m?.[3] ?? "none" };
+}
+
+/** Step 1 — shop & owner details (creates the shop on first save). */
+export function OnboardingForm({ shop }: { shop?: ShopRow | null }) {
+  const [state, formAction, pending] = useActionState<OnboardState, FormData>(saveShopDetails, { error: null });
   const { coords, status, locate } = useGeolocation();
-  const [priceLevel, setPriceLevel] = useState("2");
+  const [priceLevel, setPriceLevel] = useState(shop?.price_level ?? "2");
+  const h = parseHours(shop?.open_hours);
+  const lat = coords?.lat ?? shop?.lat ?? null;
+  const lng = coords?.lng ?? shop?.lng ?? null;
 
   return (
-    <form action={formAction} className="space-y-4">
-      {/* hidden geo fields */}
-      <input type="hidden" name="lat" value={coords?.lat ?? ""} />
-      <input type="hidden" name="lng" value={coords?.lng ?? ""} />
+    <form action={formAction} className="space-y-6">
+      <input type="hidden" name="lat" value={lat ?? ""} />
+      <input type="hidden" name="lng" value={lng ?? ""} />
       <input type="hidden" name="priceLevel" value={priceLevel} />
 
-      <Field label="Shop name *" name="name" placeholder="e.g. Sharma Men's Salon" required />
-      <Field label="Tagline" name="tagline" placeholder="e.g. Traditional cuts, modern comfort" />
+      <Group title="About your shop">
+        <Field label="Shop name *">
+          <input name="name" required defaultValue={shop?.name} placeholder="e.g. Sharma Men's Salon" className={input} />
+        </Field>
+        <Field label="Owner's full name *">
+          <input name="ownerName" required defaultValue={shop?.owner_name ?? ""} placeholder="As on your PAN" className={input} />
+        </Field>
+        <Field label="Tagline">
+          <input name="tagline" defaultValue={shop?.tagline ?? ""} placeholder="e.g. Sharp fades, hot towel shaves" className={input} />
+        </Field>
+        <Field label="Price range">
+          <div className="grid grid-cols-3 gap-2">
+            {(["1", "2", "3"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setPriceLevel(v)}
+                className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+                  priceLevel === v ? "border-gold bg-gold/10 text-ink" : "border-black/10 text-ink/60 hover:border-black/25"
+                }`}
+              >
+                {"₹".repeat(Number(v))} {v === "1" ? "Budget" : v === "2" ? "Standard" : "Premium"}
+              </button>
+            ))}
+          </div>
+        </Field>
+      </Group>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Area / Locality *" name="area" placeholder="e.g. Lajpat Nagar" required />
-        <Field label="City *" name="city" placeholder="e.g. New Delhi" required />
-      </div>
-
-      <Field label="Full address" name="address" placeholder="Shop no, street, landmark" />
-      <Field label="Opening hours" name="openHours" placeholder="e.g. 9:00 AM – 9:00 PM" />
-
-      {/* Price level */}
-      <div>
-        <label className="mb-1 block text-sm font-medium text-ink/70">
-          Price level
-        </label>
-        <div className="flex gap-2">
-          {[
-            { v: "1", label: "₹ Budget" },
-            { v: "2", label: "₹₹ Standard" },
-            { v: "3", label: "₹₹₹ Premium" },
-          ].map((p) => (
-            <button
-              key={p.v}
-              type="button"
-              onClick={() => setPriceLevel(p.v)}
-              className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
-                priceLevel === p.v
-                  ? "border-gold bg-gold/10 text-ink"
-                  : "border-black/10 text-ink/60 hover:border-black/25"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+      <Group title="Location">
+        <Field label="Shop address">
+          <input name="address" defaultValue={shop?.address ?? ""} placeholder="Shop no, building, street, landmark" className={input} />
+        </Field>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Area *">
+            <input name="area" required defaultValue={shop?.area ?? ""} placeholder="Lajpat Nagar" className={input} />
+          </Field>
+          <Field label="City *">
+            <input name="city" required defaultValue={shop?.city ?? ""} placeholder="New Delhi" className={input} />
+          </Field>
+          <Field label="Pincode">
+            <input name="pincode" inputMode="numeric" maxLength={6} defaultValue={shop?.pincode ?? ""} placeholder="110024" className={input} />
+          </Field>
         </div>
-      </div>
-
-      {/* Location */}
-      <div className="rounded-xl border border-black/10 p-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-black/15 p-4">
           <div>
-            <p className="text-sm font-medium text-ink">Shop location</p>
+            <p className="text-sm font-semibold text-ink">Pin your shop on the map</p>
             <p className="text-xs text-ink/50">
-              {status === "granted" && coords
-                ? "✅ Location captured — customers can find you nearby."
-                : "Set your location so nearby customers can discover you."}
+              {lat && lng
+                ? `📍 Pinned at ${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`
+                : "Stand inside your shop and tap the button — nearby customers will find you."}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={locate}
-            className="flex items-center gap-1.5 rounded-full bg-ink px-3 py-2 text-xs font-medium text-cream hover:bg-ink-soft"
-          >
-            {status === "locating" ? (
-              <LoaderCircle size={14} className="animate-spin" />
-            ) : (
-              <Crosshair size={14} className="text-gold" />
-            )}
-            {status === "granted" ? "Update" : "Use current location"}
+          <button type="button" onClick={locate} className="btn-primary px-4 py-2 text-xs">
+            {status === "locating" ? <LoaderCircle size={14} className="animate-spin" /> : lat && lng ? <CheckCircle2 size={14} className="text-gold" /> : <Crosshair size={14} className="text-gold" />}
+            {lat && lng ? "Re-pin" : "Use current location"}
           </button>
         </div>
-      </div>
+      </Group>
 
-      {state.error && (
-        <p className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
-          {state.error}
-        </p>
-      )}
+      <Group title="Timings">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Opens at">
+            <input name="opens" defaultValue={h.opens || "9:00 AM"} className={input} />
+          </Field>
+          <Field label="Closes at">
+            <input name="closes" defaultValue={h.closes || "9:00 PM"} className={input} />
+          </Field>
+          <Field label="Weekly off">
+            <select name="weeklyOff" defaultValue={h.off} className={input}>
+              {DAYS.map((d) => (
+                <option key={d} value={d}>
+                  {d === "none" ? "Open all 7 days" : d}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </Group>
 
-      <button type="submit" disabled={pending} className="btn-gold w-full">
-        {pending ? (
-          <LoaderCircle size={18} className="animate-spin" />
-        ) : (
-          <>
-            <Store size={18} /> Create my shop <ArrowRight size={16} />
-          </>
-        )}
+      {state.error && <p className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{state.error}</p>}
+
+      <button type="submit" disabled={pending} className="btn-gold w-full py-3.5 text-base sm:w-auto sm:px-10">
+        {pending ? <LoaderCircle size={18} className="animate-spin" /> : (<>Save &amp; continue <ArrowRight size={16} /></>)}
       </button>
-      <p className="text-center text-xs text-ink/40">
-        Your shop starts as a draft. You can add services &amp; photos, then
-        publish it when ready.
-      </p>
     </form>
   );
 }
 
-function Field({
-  label,
-  name,
-  placeholder,
-  required,
-}: {
-  label: string;
-  name: string;
-  placeholder?: string;
-  required?: boolean;
-}) {
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="space-y-4">
+      <legend className="mb-1 text-xs font-bold uppercase tracking-wider text-ink/40">{title}</legend>
+      {children}
+    </fieldset>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-ink/70">{label}</label>
-      <input
-        name={name}
-        required={required}
-        placeholder={placeholder}
-        className="w-full rounded-xl border border-black/10 px-3 py-2.5 text-sm outline-none focus:border-gold"
-      />
+      <label className="mb-1.5 block text-sm font-medium text-ink/70">{label}</label>
+      {children}
     </div>
   );
 }

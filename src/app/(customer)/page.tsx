@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getPublishedShops } from "@/lib/shops";
 import { DiscoverSection } from "@/components/DiscoverSection";
 import { PhoneMockup } from "@/components/landing/PhoneMockup";
+import { ShopCard } from "@/components/ShopCard";
+import type { Shop } from "@/lib/types";
 import {
   Search,
   BellRing,
@@ -57,6 +59,7 @@ export default async function HomePage({
   const shops = await getPublishedShops();
   const openCount = shops.filter((s) => s.openNow).length;
   const cities = Array.from(new Set(shops.map((s) => s.city).filter(Boolean)));
+  const featured = featuredShops(shops);
 
   return (
     <>
@@ -130,6 +133,30 @@ export default async function HomePage({
           </div>
         </div>
       </section>
+
+      {/* ───────────── FEATURED (ads included in every partner plan) ───────────── */}
+      {featured.length >= 2 && (
+        <section className="pt-16">
+          <div className="container-app">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <span className="eyebrow">Featured</span>
+                <h2 className="mt-3 font-display text-3xl font-bold text-ink sm:text-4xl">Partner spotlight</h2>
+              </div>
+              <Link href="#discover" className="text-sm font-semibold text-gold-dark">
+                See all →
+              </Link>
+            </div>
+          </div>
+          <div className="no-scrollbar mt-6 flex snap-x gap-5 overflow-x-auto px-5 pb-2 sm:px-8 xl:px-[max(2rem,calc((100vw-80rem)/2+2rem))]">
+            {featured.map((s) => (
+              <div key={s.id} className="w-[300px] shrink-0 snap-start">
+                <ShopCard shop={s} sponsored={s.isBoosted} />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ───────────── DISCOVER ───────────── */}
       <DiscoverSection key={q} shops={shops} initialQuery={q} />
@@ -315,6 +342,21 @@ export default async function HomePage({
       </section>
     </>
   );
+}
+
+/**
+ * Ads included in every partner plan: all live shops take turns in the
+ * spotlight (order reshuffles once a day), boosted shops always first.
+ */
+function featuredShops(shops: Shop[]): Shop[] {
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+  const score = (id: string) => {
+    let h = 2166136261;
+    for (const ch of id + day) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+    return h >>> 0;
+  };
+  const rotated = [...shops].sort((a, b) => score(a.id) - score(b.id));
+  return [...rotated.filter((s) => s.isBoosted), ...rotated.filter((s) => !s.isBoosted)].slice(0, 8);
 }
 
 function SectionHead({ eyebrow, title }: { eyebrow: string; title: string }) {

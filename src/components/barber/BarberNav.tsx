@@ -13,6 +13,8 @@ import {
   Star,
   Settings,
   ExternalLink,
+  Rocket,
+  CreditCard,
 } from "lucide-react";
 import { logout } from "@/app/barber/actions";
 
@@ -23,6 +25,8 @@ const items = [
   { href: "/barber/team", label: "Team", icon: UserCog },
   { href: "/barber/photos", label: "Photos", icon: ImageIcon },
   { href: "/barber/reviews", label: "Reviews", icon: Star },
+  { href: "/barber/growth", label: "Boost & ads", icon: Rocket },
+  { href: "/barber/billing", label: "Plan & billing", icon: CreditCard },
   { href: "/barber/settings", label: "Shop settings", icon: Settings },
 ];
 

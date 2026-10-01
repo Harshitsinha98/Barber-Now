@@ -6,6 +6,7 @@ import type { Shop } from "@/lib/types";
 import { ShopCard } from "./ShopCard";
 import { estimatedWaitMinutes, haversineKm, formatDistance } from "@/lib/utils";
 import { useGeolocation } from "@/lib/useGeolocation";
+import { trackShop } from "@/lib/track";
 import {
   Search,
   SlidersHorizontal,
@@ -29,6 +30,7 @@ const CATEGORIES = [
 ];
 
 const RADIUS_OPTIONS = [2, 5, 10, 25, 50, 0]; // 0 = any distance
+const MAX_SPONSORED = 3;
 const DEFAULT_RADIUS_KM = 10;
 
 /** Lowercase + collapse spaces so "  Sharma  salon" matches "Sharma Salon". */
@@ -127,7 +129,7 @@ export function DiscoverSection({
       : beforeRadius;
 
     const far = Number.MAX_SAFE_INTEGER;
-    return [...list].sort((a, b) => {
+    const sorted = [...list].sort((a, b) => {
       if (q) {
         // Best name matches first: exact > starts-with > contains.
         const rank = (n: string) => (n === q ? 0 : n.startsWith(q) ? 1 : n.includes(q) ? 2 : 3);
@@ -138,7 +140,23 @@ export function DiscoverSection({
       if (sort === "rating") return b.shop.rating - a.shop.rating;
       return estimatedWaitMinutes(a.shop) - estimatedWaitMinutes(b.shop);
     });
+
+    // Paid boosts: up to 3 boosted shops (already inside the radius/filters)
+    // move to the top and are labelled "Sponsored". A typed search stays
+    // purely relevance-based.
+    if (q) return sorted.map((x) => ({ ...x, sponsored: false }));
+    const boosted = sorted.filter((x) => x.shop.isBoosted).slice(0, MAX_SPONSORED);
+    const ids = new Set(boosted.map((x) => x.shop.id));
+    return [
+      ...boosted.map((x) => ({ ...x, sponsored: true })),
+      ...sorted.filter((x) => !ids.has(x.shop.id)).map((x) => ({ ...x, sponsored: false })),
+    ];
   }, [beforeRadius, radiusActive, radiusKm, sort, q]);
+
+  // Count an impression for every card actually shown.
+  useEffect(() => {
+    filtered.forEach((x) => trackShop(x.shop.id, "impression"));
+  }, [filtered]);
 
   // Shops hidden only because they're outside the radius.
   const outside = radiusActive
@@ -155,8 +173,12 @@ export function DiscoverSection({
       ? null
       : RADIUS_OPTIONS.find((r) => r > 0 && r >= closestOutside) ?? 0;
 
-  const nearest =
-    usingLocation && filtered.length > 0 && filtered[0].distance != null ? filtered[0] : null;
+  const nearest = usingLocation
+    ? filtered.reduce<(typeof filtered)[number] | null>(
+        (best, x) => (x.distance != null && (best?.distance == null || x.distance < best.distance) ? x : best),
+        null
+      )
+    : null;
 
   if (shops.length === 0) {
     return (
@@ -334,8 +356,14 @@ export function DiscoverSection({
       {/* Grid */}
       {filtered.length > 0 ? (
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map(({ shop, distance }) => (
-            <ShopCard key={shop.id} shop={shop} distanceKm={distance} />
+          {filtered.map(({ shop, distance, sponsored }) => (
+            <ShopCard
+              key={shop.id}
+              shop={shop}
+              distanceKm={distance}
+              sponsored={sponsored}
+              onOpen={() => trackShop(shop.id, "click")}
+            />
           ))}
         </div>
       ) : (

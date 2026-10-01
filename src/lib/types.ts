@@ -42,6 +42,8 @@ export interface Shop {
   reviewCount: number;
   isVerified: boolean;
   acceptsSongRequests: boolean;
+  /** Paid boost active → shown as "Sponsored" at the top. */
+  isBoosted: boolean;
   priceLevel: 1 | 2 | 3; // ₹ / ₹₹ / ₹₹₹
   coverImage: string;
   gallery: string[];
