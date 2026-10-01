@@ -11,6 +11,7 @@ import {
   queueStatusStyle,
 } from "@/lib/utils";
 import { MapPin, Navigation, BadgeCheck, Star, ArrowUpRight, Music } from "lucide-react";
+import { salonTypeLabel } from "@/lib/salon";
 
 export function ShopCard({
   shop,
@@ -106,6 +107,22 @@ export function ShopCard({
           )}
           <span className="text-ink/30">·</span>
           <span className="font-medium text-ink/60">{priceLevelLabel(shop.priceLevel)}</span>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+              shop.salonType === "women"
+                ? "bg-pink-50 text-pink-700"
+                : shop.salonType === "unisex"
+                  ? "bg-violet-50 text-violet-700"
+                  : "bg-sky-50 text-sky-700"
+            }`}
+          >
+            {salonTypeLabel(shop.salonType)}
+          </span>
+          {shop.femaleStaff && (
+            <span className="hidden rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-semibold text-pink-700 sm:inline">
+              Female staff
+            </span>
+          )}
           {shop.acceptsSongRequests && (
             <Music size={14} className="text-coral" aria-label="Takes song requests" />
           )}

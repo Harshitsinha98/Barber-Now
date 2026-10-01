@@ -4,6 +4,7 @@ import type { PaymentRow } from "@/lib/supabase/database.types";
 import { PARTNER_PLAN, findPlan, daysLeft, isActive } from "@/lib/plans";
 import { formatINR } from "@/lib/utils";
 import { PayButton } from "@/components/barber/PayButton";
+import { CheckPaymentButton } from "@/components/barber/CheckPaymentButton";
 import { Check, Receipt, Rocket, ShieldCheck } from "lucide-react";
 
 const fmt = (d?: string | null) =>
@@ -17,7 +18,12 @@ export default async function BillingPage() {
     .eq("shop_id", shop.id)
     .order("created_at", { ascending: false })
     .limit(50);
-  const payments = ((data as PaymentRow[]) ?? []).filter((p) => p.status !== "created");
+  const all = (data as PaymentRow[]) ?? [];
+  const payments = all.filter((p) => p.status !== "created");
+  // Checkout opened in the last 2 days but not confirmed (e.g. app closed mid-payment).
+  const pendingPays = all.filter(
+    (p) => p.status === "created" && p.razorpay_order_id && Date.now() - new Date(p.created_at).getTime() < 2 * 864e5
+  );
   const active = isActive(shop.subscription_until);
   const left = daysLeft(shop.subscription_until);
   const p = PARTNER_PLAN;
@@ -91,6 +97,26 @@ export default async function BillingPage() {
         </div>
       </div>
 
+      {pendingPays.length > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-900">Payment in progress</p>
+          <p className="text-xs text-amber-800">
+            If money was debited but your plan isn&apos;t active yet, tap “Check status”. Banks sometimes take a few minutes.
+          </p>
+          <div className="mt-3 space-y-2">
+            {pendingPays.map((p) => (
+              <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 text-sm">
+                <span>
+                  {findPlan(p.plan_code)?.name ?? p.plan_code} · {formatINR(p.amount)}
+                  <span className="ml-2 text-xs text-ink/40">{fmt(p.created_at)}</span>
+                </span>
+                <CheckPaymentButton paymentId={p.id} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="card overflow-hidden">
         <h2 className="flex items-center gap-2 p-5 pb-3 font-display text-lg font-bold text-ink">
           <Receipt size={18} className="text-gold-dark" /> Payment history
@@ -129,7 +155,14 @@ export default async function BillingPage() {
                         {pay.status === "paid" ? "Paid" : "Failed"}
                       </span>
                     </td>
-                    <td className="p-3 pr-5 text-right font-semibold text-ink">{formatINR(pay.amount)}</td>
+                    <td className="p-3 pr-5 text-right font-semibold text-ink">
+                      {formatINR(pay.amount)}
+                      {pay.status === "paid" && (
+                        <Link href={`/barber/billing/receipt/${pay.id}`} className="ml-3 text-xs font-medium text-gold-dark underline">
+                          Receipt
+                        </Link>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -1,4 +1,6 @@
 // Core domain types for Barber Now
+import type { ServiceCategory, SalonType } from "./supabase/database.types";
+export type { ServiceCategory, SalonType };
 
 export interface Service {
   id: string;
@@ -7,7 +9,7 @@ export interface Service {
   price: number; // in INR
   durationMinutes: number;
   discountPercent?: number; // optional offer
-  category: "hair" | "beard" | "shave" | "spa" | "combo" | "kids";
+  category: ServiceCategory;
 }
 
 export interface Review {
@@ -44,6 +46,9 @@ export interface Shop {
   acceptsSongRequests: boolean;
   /** Paid boost active → shown as "Sponsored" at the top. */
   isBoosted: boolean;
+  /** Who the salon serves. */
+  salonType: SalonType;
+  femaleStaff: boolean;
   priceLevel: 1 | 2 | 3; // ₹ / ₹₹ / ₹₹₹
   coverImage: string;
   gallery: string[];

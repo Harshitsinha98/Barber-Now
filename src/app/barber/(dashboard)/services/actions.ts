@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { getOwnedShop } from "@/lib/barber";
+import { ALL_CATEGORY_VALUES } from "@/lib/salon";
 
 export type ServiceState = { error: string | null; ok?: boolean };
 
-const CATEGORIES = ["hair", "beard", "shave", "spa", "combo", "kids"];
+const CATEGORIES: string[] = ALL_CATEGORY_VALUES;
 
 function parse(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim().slice(0, 80);

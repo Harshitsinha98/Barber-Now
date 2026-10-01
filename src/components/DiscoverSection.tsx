@@ -7,6 +7,7 @@ import { ShopCard } from "./ShopCard";
 import { estimatedWaitMinutes, haversineKm, formatDistance } from "@/lib/utils";
 import { useGeolocation } from "@/lib/useGeolocation";
 import { trackShop } from "@/lib/track";
+import { SERVICE_CATEGORIES } from "@/lib/salon";
 import {
   Search,
   SlidersHorizontal,
@@ -21,13 +22,23 @@ type SortKey = "nearest" | "rating" | "wait";
 
 const CATEGORIES = [
   { value: "all", label: "All services" },
-  { value: "hair", label: "✂️ Haircut" },
-  { value: "beard", label: "🧔 Beard" },
-  { value: "shave", label: "🪒 Shave" },
-  { value: "spa", label: "💆 Spa & facial" },
-  { value: "combo", label: "⭐ Combos" },
-  { value: "kids", label: "🧒 Kids" },
+  ...SERVICE_CATEGORIES.map((c) => ({ value: c.value as string, label: `${c.emoji} ${c.label}` })),
 ];
+
+type Audience = "all" | "women" | "men" | "unisex";
+const AUDIENCES: { value: Audience; label: string }[] = [
+  { value: "all", label: "Everyone" },
+  { value: "women", label: "💅 Women" },
+  { value: "men", label: "💈 Men" },
+  { value: "unisex", label: "✨ Unisex" },
+];
+
+/** Women → women's + unisex salons; Men → men's + unisex; Unisex → unisex only. */
+function matchesAudience(shop: Shop, a: Audience): boolean {
+  if (a === "all") return true;
+  if (a === "unisex") return shop.salonType === "unisex";
+  return shop.salonType === a || shop.salonType === "unisex";
+}
 
 const RADIUS_OPTIONS = [2, 5, 10, 25, 50, 0]; // 0 = any distance
 const MAX_SPONSORED = 3;
@@ -56,9 +67,13 @@ function haystack(shop: Shop): string {
 export function DiscoverSection({
   shops,
   initialQuery = "",
+  initialAudience = "all",
+  initialCategory = "all",
 }: {
   shops: Shop[];
   initialQuery?: string;
+  initialAudience?: string;
+  initialCategory?: string;
 }) {
   const { coords, status, error, locate } = useGeolocation();
 
@@ -67,7 +82,12 @@ export function DiscoverSection({
   const [sort, setSort] = useState<SortKey>("nearest");
   const [openOnly, setOpenOnly] = useState(false);
   const [radiusKm, setRadiusKm] = useState<number>(DEFAULT_RADIUS_KM);
-  const [category, setCategory] = useState<string>("all");
+  const [category, setCategory] = useState<string>(
+    CATEGORIES.some((c) => c.value === initialCategory) ? initialCategory : "all"
+  );
+  const [audience, setAudience] = useState<Audience>(
+    AUDIENCES.some((a) => a.value === initialAudience) ? (initialAudience as Audience) : "all"
+  );
   const [offersOnly, setOffersOnly] = useState(false);
   const [autoTried, setAutoTried] = useState(false);
 
@@ -118,9 +138,16 @@ export function DiscoverSection({
       const matchesCategory =
         category === "all" || shop.services.some((s) => s.category === category);
       const matchesOffers = !offersOnly || shop.services.some((s) => s.discountPercent);
-      return matchesQuery && matchesCity && matchesOpen && matchesCategory && matchesOffers;
+      return (
+        matchesQuery &&
+        matchesCity &&
+        matchesOpen &&
+        matchesCategory &&
+        matchesOffers &&
+        matchesAudience(shop, audience)
+      );
     });
-  }, [indexed, q, city, openOnly, category, offersOnly]);
+  }, [indexed, q, city, openOnly, category, offersOnly, audience]);
 
   const filtered = useMemo(() => {
     // Radius only applies to shops whose location we know.
@@ -189,14 +216,14 @@ export function DiscoverSection({
             <MapPin size={24} />
           </span>
           <h2 className="mt-4 font-display text-2xl font-bold text-ink">
-            Partner shops are coming soon
+            Salons near you are coming soon
           </h2>
           <p className="mt-2 text-ink/60">
-            We&apos;re onboarding barbershops in your area. Own a shop? List it
-            for free and start taking online bookings today.
+            We&apos;re onboarding men&apos;s, women&apos;s and unisex salons in your area. Own a salon?
+            Join BarberNow and start taking online bookings.
           </p>
-          <Link href="/barber/login" className="btn-gold mt-6">
-            List your shop
+          <Link href="/partner" className="btn-gold mt-6">
+            Partner with us
           </Link>
         </div>
       </section>
@@ -210,7 +237,7 @@ export function DiscoverSection({
           <MapPin size={12} /> Near you
         </span>
         <h2 className="font-display text-4xl font-bold text-ink sm:text-5xl">
-          Pick a shop. <span className="text-gradient">Skip the line.</span>
+          Pick a salon. <span className="text-gradient">Skip the line.</span>
         </h2>
         <p className="mx-auto max-w-xl text-ink/60">
           Live wait times, real reviews and instant booking.
@@ -245,7 +272,7 @@ export function DiscoverSection({
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by shop name, area, service or barber…"
+              placeholder="Search salon, area, service or stylist…"
               aria-label="Search barbershops"
               className="w-full bg-transparent text-sm outline-none placeholder:text-ink/40 [&::-webkit-search-cancel-button]:hidden"
             />
@@ -335,6 +362,21 @@ export function DiscoverSection({
           </p>
         )}
 
+        {/* Who the salon is for */}
+        <div className="mt-4 inline-flex rounded-full border border-black/10 bg-white p-1">
+          {AUDIENCES.map((a) => (
+            <button
+              key={a.value}
+              onClick={() => setAudience(a.value)}
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                audience === a.value ? "bg-ink text-cream" : "text-ink/60 hover:text-ink"
+              }`}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+
         {/* Service category chips */}
         <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
           {CATEGORIES.map((c) => (
@@ -392,6 +434,7 @@ export function DiscoverSection({
                   setQuery("");
                   setCity("All");
                   setCategory("all");
+                  setAudience("all");
                   setOpenOnly(false);
                   setOffersOnly(false);
                 }}

@@ -15,9 +15,9 @@ const display = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
-  title: "BarberNow — Haircut, bina line ke.",
+  title: "BarberNow — Salon jao, line mein nahi.",
   description:
-    "Find barbershops near you, see the live queue and book your spot from your phone. No more waiting. Made for India.",
+    "Book men's, women's and unisex salons near you, see the live queue and walk in when it's your turn. Made for India.",
 };
 
 export const viewport: Viewport = {

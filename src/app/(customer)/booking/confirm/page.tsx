@@ -5,6 +5,7 @@ import { getSessionUser } from "@/lib/auth";
 import { formatINR, BOOKING_STATUS_LABEL } from "@/lib/utils";
 import { QueueTracker } from "@/components/QueueTracker";
 import { CancelBookingButton, ReviewForm, SongRequestEditor } from "@/components/BookingActions";
+import { ShareBookingButton } from "@/components/ShareBookingButton";
 import { getQueueStatus } from "../actions";
 import {
   CheckCircle2,
@@ -133,6 +134,11 @@ export default async function ConfirmPage({
               <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="btn-outline text-sm">
                 <Navigation size={15} /> Directions
               </a>
+              <ShareBookingButton
+                text={`I'm booked at ${shop.name} (${[shop.address, shop.area, shop.city].filter(Boolean).join(", ")})${
+                  mode === "slot" && slotTime ? ` at ${slotTime}` : " — in the live queue"
+                }. Booking ${shortId} via BarberNow. Directions: ${mapsUrl}`}
+              />
               {cancellable && <CancelBookingButton bookingId={booking.id} />}
             </div>
           )}

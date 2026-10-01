@@ -14,14 +14,8 @@ export interface ServiceFormValues {
   description?: string | null;
 }
 
-const QUICK = [
-  { name: "Haircut", price: 200, duration: 30, category: "hair" },
-  { name: "Beard trim", price: 100, duration: 15, category: "beard" },
-  { name: "Shave", price: 100, duration: 20, category: "shave" },
-  { name: "Hair + Beard combo", price: 280, duration: 45, category: "combo" },
-  { name: "Head massage", price: 150, duration: 20, category: "spa" },
-  { name: "Kids haircut", price: 150, duration: 20, category: "kids" },
-];
+import { quickServices, SERVICE_CATEGORIES, type QuickService } from "@/lib/salon";
+import type { SalonType } from "@/lib/supabase/database.types";
 
 const input =
   "w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold";
@@ -30,10 +24,18 @@ const input =
 export function ServiceForm({
   initial,
   onDone,
+  salonType,
 }: {
   initial?: ServiceFormValues;
   onDone?: () => void;
+  salonType?: SalonType;
 }) {
+  const QUICK = quickServices(salonType);
+  // Show the categories that fit this salon first, then the rest.
+  const cats = [
+    ...SERVICE_CATEGORIES.filter((c) => !salonType || c.for.includes(salonType)),
+    ...SERVICE_CATEGORIES.filter((c) => salonType && !c.for.includes(salonType)),
+  ];
   const editing = Boolean(initial?.id);
   const [state, formAction, pending] = useActionState<ServiceState, FormData>(
     editing ? updateService : addService,
@@ -47,7 +49,7 @@ export function ServiceForm({
     onDone?.();
   }, [state, editing, onDone]);
 
-  function quickFill(q: (typeof QUICK)[number]) {
+  function quickFill(q: QuickService) {
     const f = formRef.current;
     if (!f) return;
     (f.elements.namedItem("name") as HTMLInputElement).value = q.name;
@@ -106,12 +108,11 @@ export function ServiceForm({
         <div>
           <label className="mb-1 block text-xs font-medium text-ink/60">Category</label>
           <select name="category" defaultValue={initial?.category ?? "hair"} className={input}>
-            <option value="hair">Hair</option>
-            <option value="beard">Beard</option>
-            <option value="shave">Shave</option>
-            <option value="spa">Spa / Facial</option>
-            <option value="combo">Combo</option>
-            <option value="kids">Kids</option>
+            {cats.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.emoji} {c.label}
+              </option>
+            ))}
           </select>
         </div>
         <div className="sm:col-span-2">
@@ -146,11 +147,11 @@ export function ServiceForm({
   );
 }
 
-export function AddServiceForm() {
+export function AddServiceForm({ salonType }: { salonType?: SalonType }) {
   return (
     <div className="card p-5">
       <h3 className="mb-4 font-display text-lg font-bold text-ink">Add a service</h3>
-      <ServiceForm />
+      <ServiceForm salonType={salonType} />
     </div>
   );
 }

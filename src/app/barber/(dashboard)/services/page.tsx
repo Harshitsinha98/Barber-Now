@@ -24,7 +24,7 @@ export default async function ServicesPage() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[380px_1fr]">
         <div>
-          <AddServiceForm />
+          <AddServiceForm salonType={shop.salon_type} />
         </div>
         <div>
           {services.length === 0 ? (

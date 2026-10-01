@@ -1,6 +1,6 @@
 # BarberNow Partner Program
 
-Zomato/Swiggy-style onboarding for barbershops, with a flat subscription instead of commission.
+Zomato/Swiggy-style onboarding for men's, women's and unisex salons, with a flat subscription instead of commission. Public explainer page: `/partner`.
 
 ## Business model
 
@@ -64,7 +64,8 @@ OTP login → Onboarding wizard (5 steps) → Submit → Admin review → Approv
 ## Setup checklist
 1. Run `supabase/migrations/0007_partner_program.sql`. Already-live shops are auto-approved with a 30-day free grace period.
 2. Add `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` to Vercel.
-3. In Razorpay Dashboard → Webhooks, add the URL above with those two events.
+3. In Razorpay Dashboard → Webhooks, add the URL above (events: payment.captured, order.paid, payment.failed). Full guide: `docs/RAZORPAY_SETUP.md`.
+4. Run `supabase/migrations/0008_salon_types.sql` (women's & unisex salons).
 
 ## Open decisions
 - GST: prices are shown as GST-inclusive. Confirm with your CA, and add GST invoices before scaling.

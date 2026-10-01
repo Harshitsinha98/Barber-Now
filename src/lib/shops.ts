@@ -82,6 +82,8 @@ export function mapShop(
     // Strictly `true`: stays hidden (instead of erroring) until migration 0006 runs.
     acceptsSongRequests: row.accepts_song_requests === true,
     isBoosted: Boolean(row.boost_until && new Date(row.boost_until).getTime() > Date.now()),
+    salonType: row.salon_type ?? "men",
+    femaleStaff: row.female_staff === true,
     priceLevel: (Number(row.price_level) || 2) as 1 | 2 | 3,
     coverImage: row.cover_image || FALLBACK_COVER,
     gallery: row.gallery ?? [],

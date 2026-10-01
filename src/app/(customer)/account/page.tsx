@@ -27,7 +27,7 @@ export default async function AccountPage() {
 
       {!name && (
         <p className="mt-6 rounded-xl bg-gold/10 p-4 text-sm text-gold-dark">
-          👋 Add your name so the barber knows who&apos;s next in the queue.
+          👋 Add your name so the salon knows who&apos;s next in the queue.
         </p>
       )}
 

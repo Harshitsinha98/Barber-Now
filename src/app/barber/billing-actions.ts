@@ -9,6 +9,7 @@ import {
   createRazorpayOrder,
   verifyCheckoutSignature,
   fulfillPayment,
+  syncPaymentWithRazorpay,
 } from "@/lib/billing";
 import type { PaymentRow } from "@/lib/supabase/database.types";
 
@@ -106,6 +107,23 @@ export async function confirmCheckout(input: {
   if (!pay) return { ok: false, error: "Payment record not found." };
 
   const res = await fulfillPayment(pay.id, { razorpayPaymentId: input.paymentId });
+  revalidatePath("/barber", "layout");
+  return res;
+}
+
+/** "Money got debited but plan isn't active?" — re-check a pending payment. */
+export async function checkPaymentStatus(paymentId: string): Promise<{ ok: boolean; status: string; error?: string }> {
+  const ctx = await getOwnedShop();
+  if (!ctx) return { ok: false, status: "unknown", error: "Please sign in again." };
+  const db = createAdminClient();
+  const { data: pay } = await db
+    .from("payments")
+    .select("id")
+    .eq("id", paymentId)
+    .eq("shop_id", ctx.shop.id)
+    .maybeSingle();
+  if (!pay) return { ok: false, status: "unknown", error: "Payment not found." };
+  const res = await syncPaymentWithRazorpay(paymentId);
   revalidatePath("/barber", "layout");
   return res;
 }

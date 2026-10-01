@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { getShopBySlug, getTakenSlots } from "@/lib/shops";
 import { priceLevelLabel, formatINR, effectivePrice } from "@/lib/utils";
 import { Stars } from "@/components/Stars";
+import { SALON_TYPES, salonTypeLabel } from "@/lib/salon";
 import { Gallery } from "@/components/Gallery";
 import { BookingWidget } from "@/components/BookingWidget";
 import {
@@ -70,6 +71,10 @@ export default async function ShopPage({ params }: Props) {
               {shop.openNow ? "Open now" : "Closed"}
             </span>
             <span className="badge bg-white/15 text-cream">{priceLevelLabel(shop.priceLevel)}</span>
+            <span className="badge bg-white/15 text-cream">
+              {SALON_TYPES.find((t) => t.value === shop.salonType)?.emoji} {salonTypeLabel(shop.salonType)} salon
+            </span>
+            {shop.femaleStaff && <span className="badge bg-pink-500 text-white">Female staff</span>}
           </div>
           <h1 className="mt-3 font-display text-3xl font-bold sm:text-5xl">{shop.name}</h1>
           {shop.tagline && <p className="mt-1 text-cream/80">{shop.tagline}</p>}

@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import type { ShopRow } from "@/lib/supabase/database.types";
 import { updateShopSettings, type SettingsState } from "./actions";
+import { SALON_TYPES } from "@/lib/salon";
 import { useGeolocation } from "@/lib/useGeolocation";
 import { Crosshair, LoaderCircle, Save, Check } from "lucide-react";
 
@@ -14,6 +15,8 @@ const AMENITIES = [
   "Wi-Fi",
   "Parking",
   "Women welcome",
+  "Private cabin",
+  "Bridal packages",
   "Complimentary beverage",
   "Home service",
 ];
@@ -38,6 +41,23 @@ export function SettingsForm({ shop }: { shop: ShopRow }) {
         <Field label="Shop name *">
           <input name="name" required defaultValue={shop.name} className={input} />
         </Field>
+        {shop.salon_type !== undefined && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Salon type">
+              <select name="salonType" defaultValue={shop.salon_type} className={input}>
+                {SALON_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.emoji} {t.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <label className="flex items-center gap-2 self-end rounded-xl bg-black/[0.03] px-3 py-2.5 text-sm text-ink/70">
+              <input type="checkbox" name="femaleStaff" defaultChecked={shop.female_staff === true} className="h-4 w-4 accent-gold" />
+              Female stylists available
+            </label>
+          </div>
+        )}
         <Field label="Tagline">
           <input name="tagline" defaultValue={shop.tagline ?? ""} placeholder="Traditional cuts, modern comfort" className={input} />
         </Field>

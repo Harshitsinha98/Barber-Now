@@ -53,9 +53,12 @@ export async function saveShopDetails(_prev: OnboardState, fd: FormData): Promis
     opens && closes ? `${opens} – ${closes}${weeklyOff && weeklyOff !== "none" ? ` · Closed ${weeklyOff}` : ""}` : null;
   const priceLevel = str(fd, "priceLevel", 1);
 
+  const salonType = str(fd, "salonType", 10);
   const values = {
     name,
     owner_name: ownerName,
+    salon_type: ["men", "women", "unisex"].includes(salonType) ? salonType : "men",
+    female_staff: Boolean(fd.get("femaleStaff")),
     tagline: str(fd, "tagline", 120) || null,
     address: str(fd, "address", 200) || null,
     area,

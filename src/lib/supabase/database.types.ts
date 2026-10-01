@@ -2,7 +2,20 @@
 // (You can later regenerate these with: supabase gen types typescript)
 
 export type UserRole = "customer" | "barber";
-export type ServiceCategory = "hair" | "beard" | "shave" | "spa" | "combo" | "kids";
+export type ServiceCategory =
+  | "hair"
+  | "beard"
+  | "shave"
+  | "spa"
+  | "combo"
+  | "kids"
+  | "colour"
+  | "skin"
+  | "nails"
+  | "waxing"
+  | "threading"
+  | "makeup";
+export type SalonType = "men" | "women" | "unisex";
 export type PriceLevel = "1" | "2" | "3";
 export type QueueStatus = "quiet" | "moderate" | "busy";
 export type BookingMode = "queue" | "slot";
@@ -48,6 +61,9 @@ export interface ShopRow {
   is_suspended: boolean;
   /** Undefined until migration 0006 is applied. */
   accepts_song_requests?: boolean;
+  // ── Salon types (migration 0008) ──
+  salon_type?: SalonType;
+  female_staff?: boolean;
   // ── Partner program (migration 0007) ──
   onboarding_status?: "draft" | "submitted" | "approved" | "rejected";
   owner_name?: string | null;

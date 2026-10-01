@@ -21,7 +21,7 @@ export function ProfileForm({ initialName }: { initialName: string }) {
           {pending ? <LoaderCircle size={16} className="animate-spin" /> : "Save"}
         </button>
       </div>
-      <p className="text-xs text-ink/40">Shown to the barber when you book, and on your reviews.</p>
+      <p className="text-xs text-ink/40">Shown to the salon when you book, and on your reviews.</p>
       {state.error && <p className="text-sm text-rose-600">{state.error}</p>}
       {state.ok && (
         <p className="flex items-center gap-1 text-sm text-emerald-600">

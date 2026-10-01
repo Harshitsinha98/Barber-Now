@@ -39,6 +39,15 @@ export async function updateShopSettings(
       price_level: ["1", "2", "3"].includes(priceLevel) ? priceLevel : "2",
       queue_avg_minutes: Number.isFinite(avg) && avg >= 5 && avg <= 180 ? Math.round(avg) : ctx.shop.queue_avg_minutes,
       amenities,
+      // Only sent once migration 0008 is applied (the form hides these fields before that).
+      ...(formData.has("salonType")
+        ? {
+            salon_type: ["men", "women", "unisex"].includes(str(formData, "salonType", 10))
+              ? str(formData, "salonType", 10)
+              : "men",
+            female_staff: Boolean(formData.get("femaleStaff")),
+          }
+        : {}),
       ...(lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : {}),
     })
     .eq("id", ctx.shop.id);
